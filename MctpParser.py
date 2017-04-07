@@ -52,21 +52,111 @@ def GetMctpMessageType(TypeCode):
     return Mctp_Message_Types.get(TypeCode,'Reserved')
      
 
+def GetSetEndpointEidOperationName(Oper):
+    
+    return
+
 
 #0x01 : 'Set Endpoint EID'
 def ParseMctpSetEndpointEidReq(Frame):
-    ...
-    return ""
+    Template = ""
+    if len(Frame) == 2:
+
+        Mctp_Set_Endpoint_Eid_Operation = {
+            0b00 : 'Set EID',
+            0b01 : 'Force EID',
+            0b10 : 'Reset EID (optional)',
+            0b11 : 'Set Discovered Flag'}
+        
+        Template += "{Operation:#04x} : {rsvd:#b}=Reserved, {Oper:#04b}={OperDesc:s},\n\r"
+        Template += "{EndpointID:#04x} : Endpoint ID \n\r"
+
+        Result = Template.format(Operation = Frame[0],
+                                 rsvd = (Frame[0] & 0xfc) >> 2,
+                                 Oper = Frame[0] & 0x3,
+                                 OperDesc = Mctp_Set_Endpoint_Eid_Operation.get(Frame[0] & 0x3,'Error unknown Operation Code'),
+                                 EndpointID = Frame[1])
+        
+    else:
+       Result = Template + "Error Invalid length" 
+    return Result
+
 def ParseMctpSetEndpointEidRes(Frame):
-    ...
-    return ""
+    Template = ""
+    if len(Frame) == 4:
+        Mctp_Set_Endpoint_Eid_Assignment_Status= {
+            0b00 : 'EID assignment accepted',
+            0b01 : 'EID assignment rejected',
+            0b10 : 'reserved',
+            0b11 : 'reserved'}
+        Mctp_Set_Endpoint_Eid_Allocation_Status= {
+            0b00 : 'Device does not use an EID pool',
+            0b01 : 'Endpoint requires EID pool allocation',
+            0b10 : 'Endpoint uses an EID pool and has already received an allocation for that pool',
+            0b11 : 'reserved'}
+        
+        Template += "{CompCode:#04x} : {CompCodeDesc:s},\n\r"
+        Template += "{SecondByte:#04x} : {rsvd1:#04b}=reserved, {EidAssignStatus:#04b}={EidAssignDesc:s}, {rsvd2:#04b}=reserved, {EidAllocStatus:#04b}={EidAllocDesc:s},\n\r"
+        Template += "{EidSetting:#04x} : EID Setting,\n\r"
+        Template += "{EidPoolSize:#04x} : EID Pool Size,\n\r"
+
+      
+        Result = Template.format(CompCode = Frame[0],
+                                 CompCodeDesc = Mctp_Control_Message_Status_Codes.get(Frame[0]),
+                                 SecondByte = Frame[1],
+                                 rsvd1 = (Frame[1] & 0xc0) >> 6,
+                                 EidAssignStatus = (Frame[1] & 0x30) >> 4,
+                                 EidAssignDesc = Mctp_Set_Endpoint_Eid_Assignment_Status.get((Frame[1] & 0x30) >> 4, "Error unknown EID Assignment Status"),
+                                 rsvd2 = (Frame[1] & 0x0c) >> 2,
+                                 EidAllocStatus = Frame[1] & 0x03,
+                                 EidAllocDesc = Mctp_Set_Endpoint_Eid_Allocation_Status.get(Frame[1] & 0x03, "Error unknown EID Allocation Status"),
+                                 EidSetting = Frame[2],
+                                 EidPoolSize = Frame[3])
+                                
+
+    else:
+        Result = Template + "Error Invalid length"    
+    return Result
+
+
 #0x02 : 'Get Endpoint EID'
 def ParseMctpGetEndpointEidReq(Frame):
-    ...
     return ""
+
 def ParseMctpGetEndpointEidRes(Frame):
-    ...
-    return ""
+    Template = ""
+    if len(Frame) == 4:
+        Mctp_Get_Endpoint_Type= {
+            0b00 : 'simple endpoint',
+            0b01 : 'bus owner/bridge',
+            0b10 : 'reserved',
+            0b11 : 'reserved'}
+        Mctp_Get_Endpoint_Id_Type= {
+            0b00 : 'dynamic EID',
+            0b01 : 'static EID supported. The endpoint was configured with a static EID.',
+            0b10 : 'static EID supported. Present EID matches static EID',
+            0b11 : 'static EID supported. Present EID does not match static EID'}
+
+        Template += "{CompCode:#04x} : {CompCodeDesc:s},\n\r"
+        Template += "{EndpointID:#04x} : Endpoint ID,\n\r"
+        Template += "{ThirdByte:#04x} : {rsvd1:#04b}=reserved, {EndType:#04b}={EndTypeDesc:s}, {rsvd2:#04b}=reserved, {EndIdType:#04b}={EndIdTypeDesc:s} \n\r"
+        Template += "{MediumSpecific:#04x} : Medium-Specific Information\n\r"
+
+        Result = Template.format(CompCode = Frame[0],
+                                 CompCodeDesc = Mctp_Control_Message_Status_Codes.get(Frame[0]),
+                                 EndpointID = Frame[1],
+                                 ThirdByte = Frame[2],
+                                 rsvd1 = (Frame[2] & 0xc0) >>6,
+                                 EndType =  (Frame[2] & 0x30) >>4,
+                                 EndTypeDesc = Mctp_Get_Endpoint_Type.get((Frame[2] & 0x30) >>4, 'Error Unknown Endpoint Type'),
+                                 rsvd2 = (Frame[2] & 0x0c) >>2,
+                                 EndIdType = Frame[2] & 0x03,
+                                 EndIdTypeDesc = Mctp_Get_Endpoint_Id_Type.get(Frame[2] & 0x03, 'Error Unknown Endpoint ID Type' ),
+                                 MediumSpecific = Frame[3])
+        
+    else:
+        Result = Template + "Error Invalid length"    
+    return Result
         
     
 #0x03 : 'Get Endpoint UUID'
@@ -132,8 +222,8 @@ def GetMctpControlFramePayloadParser(RqBit,CmdCode):
 
 def ParseMctpControlFrameCommonHeader(Frame):
     Template =  "\n\r"
-    Template += "{FirstByte:#04x} : {IC:x} : IC, 0x00 : MCTP Control Command,\n\r" 
-    Template += "{SecondByte:#04x} : {Rq:x} : Rq, {D:x} : D, {rsvd:x} : rsvd, {InsID:x} : Instance ID \n\r"
+    Template += "{FirstByte:#04x} : {IC:#03b}=IC, 0x00=MCTP Control Command,\n\r" 
+    Template += "{SecondByte:#04x} : {Rq:#03b}=Rq, {D:#03b}=D, {rsvd:#03b}=rsvd, {InsID:#d} : Instance ID \n\r"
     Template += "{CommandCode:#04x} : {CommandDesc:s} \n\r"
 
     Result = Template.format(FirstByte = Frame[0],
@@ -160,8 +250,7 @@ def ParseMctpControlFrame(Frame):
         if None != MctpControlFramePayloadParser:
             Template += MctpControlFramePayloadParser(Frame[3:])
         else:
-            Template =  "\n\r"
-            Template + "No handle found"
+            Template += "\n\r No parser found"
 
         Result = Template.format()
     else:
@@ -169,6 +258,10 @@ def ParseMctpControlFrame(Frame):
 
     print(Result)
     return Result
+
+def ParseMctpVendorDefinedPcieFrame(Packet_Data):
+    ...
+    return
 
 
 def ParseMctpPacketPayload(Packet_Data):
@@ -183,13 +276,13 @@ def ParseMctpPacketPayload(Packet_Data):
 
 
 def ParseMctpTransportHeader(Header):
-    Template = "MCTP Transport Header: "
+    Template = "MCTP Transport Header:"
     if len(Header) == 4:
         Template += "\n\r"
-        Template += "{FirstByte:#04x} : {Rsvd:x} : Reserved, {Head_Ver:x} : Header Version,\n\r" 
+        Template += "{FirstByte:#04x} : {Rsvd:#x} : Reserved, {Head_Ver:#x} : Header Version,\n\r" 
         Template += "{Dest_Eid:#04x} : Destination endpoint ID,\n\r"
         Template += "{Src_Eid:#04x} : Source endpoint ID,\n\r"
-        Template += "{ForthByte:#04x} : {SOM:x} : SOM, {EOM:x} : EOM, {PktSeq:x} : PktSeq#, {TO:x} : TO, {MsgTag:x} : MsgTag"
+        Template += "{ForthByte:#04x} : {SOM:#03b}=SOM, {EOM:#03b}=EOM, {PktSeq:#d}=PktSeq#, {TO:#03b}=TO, {MsgTag:#d}=MsgTag"
         
         Result = Template.format(FirstByte = Header[0],
                         Rsvd= Header[0]>>4,
@@ -224,13 +317,22 @@ if __name__ == "__main__":
 
 # 0x70 0x00 0x10 0x01 0x17 0x00 0x10 0x7F 0x00 0x00 0x1A 0xB4 0x01 0x00 0x00 0xFB 0x00 0x82 0x0D     req0D discovery notify
 # 0x70 0x00 0x10 0x01 0x17 0x00 0x10 0x7F 0x00 0x00 0x1A 0xB4 0x01 0x00 0x00 0xD9 0x00 0x87 0x02     req02 Get Endpoint EID
-    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x02]
-    Mctp_Test_Transport_Header = Mctp_Test_Frame[:4]
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x01, 0x00, 0x60]    #Set EID Req
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x01, 0x00, 0x00, 0x60, 0x03]    #Set EID Res
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x02]    #Get EID Req
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x02, 0x00, 0x61, 0x00, 0x00]    #Get EID Res
+    ParseMctpFrame(Mctp_Test_Frame)
+
+
     #print(MctpTestTransportHeader)
     #print(ParseMctpTransportHeader(MctpTestTransportHeader))
-
-    ParseMctpFrame(Mctp_Test_Frame)
-    
     #print(GetMctpControlMessageCommandCode(0x00))
     #print(GetMctpControlMessageCommandCode(0x01))
     #print(GetMctpControlMessageCommandCode(0x02))
