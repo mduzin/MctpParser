@@ -161,8 +161,8 @@ def ParseMctpGetEndpointEidRes(Frame):
     
 #0x03 : 'Get Endpoint UUID'
 def ParseMctpGetEndpointUuidReq(Frame):
-    ...
     return ""
+
 def ParseMctpGetEndpointUuidRes(Frame):
     ...
     return ""
@@ -176,34 +176,113 @@ def ParseMctpGetMctpVersionSupportRes(Frame):
     return ""
 
 #0x05 : 'Get Message Type Support',
+def ParseMctpGetMessageTypeSupportReq(Frame):
+    return ""
+
+def ParseMctpGetMessageTypeSupportRes(Frame):
+    Template = ""
+    Message_Type_Count = Frame[1]
+    Frame_Expected_Length = Message_Type_Count + 2; #2 fire two bytes of response
+    
+    if len(Frame) >= Frame_Expected_Length:
+        Template += "{CompCode:#04x} : {CompCodeDesc:s},\n\r"
+        Template += "{MsgTypeCount:#04x} : MCTP Message Type Count,\n\r"
+        #list supported message types
+        for i in range(Message_Type_Count):
+            Template += ""
+        
+        
+        
+        Result = Template.format(CompCode = Frame[0],
+                                 CompCodeDesc = Mctp_Control_Message_Status_Codes.get(Frame[0]))
+        
+    else:
+        Result = Template + "Error Invalid length"
+    return Result
+
+
 #0x06 : 'Get Vendor Defined Message Support',
 #0x07 : 'Resolve Endpoint ID',
 #0x08 : 'Allocate Endpoint IDs',
 #0x09 : 'Routing Information Update',
 #0x0a : 'Get Routing Table Entries',
+
 #0x0b : 'Prepare for Endpoint Discovery',
+def ParseMctpPrepareForEndpointDiscoveryReq(Frame):
+    return ""
+    
+def ParseMctpPrepareForEndpointDiscoveryRes(Frame):
+    Template = ""
+    if len(Frame) == 1:
+        Template += "{CompCode:#04x} : {CompCodeDesc:s},\n\r"
+        
+        Result = Template.format(CompCode = Frame[0],
+                                 CompCodeDesc = Mctp_Control_Message_Status_Codes.get(Frame[0]))
+        
+    else:
+        Result = Template + "Error Invalid length"
+    return Result
+    
 #0x0c : 'Endpoint Discovery',
+def ParseMctpEndpointDiscoveryReq(Frame):
+    return ""
+    
+def ParseMctpEndpointDiscoveryRes(Frame):
+    Template = ""
+    if len(Frame) == 1:
+        Template += "{CompCode:#04x} : {CompCodeDesc:s},\n\r"
+        
+        Result = Template.format(CompCode = Frame[0],
+                                 CompCodeDesc = Mctp_Control_Message_Status_Codes.get(Frame[0]))
+        
+    else:
+        Result = Template + "Error Invalid length"
+    return Result
+
 #0x0d : 'Discovery Notify',
+def ParseMctpDiscoveryNotifyReq(Frame):
+    return ""
+    
+def ParseMctpDiscoveryNotifyRes(Frame):
+    Template = ""
+    if len(Frame) == 1:
+        Template += "{CompCode:#04x} : {CompCodeDesc:s},\n\r"
+        
+        Result = Template.format(CompCode = Frame[0],
+                                 CompCodeDesc = Mctp_Control_Message_Status_Codes.get(Frame[0]))
+        
+    else:
+        Result = Template + "Error Invalid length"
+    return Result
+
+
 #0x0e : 'Get Network ID',
+def ParseMctpGetNetworkIdReq(Frame):
+    return ""
+    
+def ParseMctpGetNetworkIdRes(Frame):
+    return ""
+
+
 #0x0f : 'Query Hop'}
 
 
 Mctp_Control_Message_Handlers = {
     0x00 : {'Req' : None, 'Res': None},
-    0x01 : {'Req' : ParseMctpSetEndpointEidReq, 'Res': ParseMctpSetEndpointEidRes},
-    0x02 : {'Req' : ParseMctpGetEndpointEidReq, 'Res': ParseMctpGetEndpointEidRes},
+    0x01 : {'Req' : ParseMctpSetEndpointEidReq, 'Res': ParseMctpSetEndpointEidRes}, #Done
+    0x02 : {'Req' : ParseMctpGetEndpointEidReq, 'Res': ParseMctpGetEndpointEidRes}, #Done
     0x03 : {'Req' : ParseMctpGetEndpointUuidReq, 'Res': ParseMctpGetEndpointUuidRes},
     0x04 : {'Req' : ParseMctpGetMctpVersionSupportReq, 'Res': ParseMctpGetMctpVersionSupportRes},
-    0x05 : {'Req' : None, 'Res': None},
+    0x05 : {'Req' : ParseMctpGetMessageTypeSupportReq, 'Res': ParseMctpGetMessageTypeSupportRes},
     0x06 : {'Req' : None, 'Res': None},
     0x07 : {'Req' : None, 'Res': None},
     0x08 : {'Req' : None, 'Res': None},
     0x09 : {'Req' : None, 'Res': None},
     0x0a : {'Req' : None, 'Res': None},
-    0x0b : {'Req' : None, 'Res': None},
-    0x0c : {'Req' : None, 'Res': None},
-    0x0d : {'Req' : None, 'Res': None},
-    0x0e : {'Req' : None, 'Res': None},
+    0x0b : {'Req' : ParseMctpPrepareForEndpointDiscoveryReq, 'Res': ParseMctpPrepareForEndpointDiscoveryRes}, #Done
+    0x0c : {'Req' : ParseMctpEndpointDiscoveryReq, 'Res': ParseMctpEndpointDiscoveryRes}, #Done
+    0x0d : {'Req' : ParseMctpDiscoveryNotifyReq, 'Res': ParseMctpDiscoveryNotifyRes}, #Done
+    0x0e : {'Req' : ParseMctpGetNetworkIdReq, 'Res': ParseMctpGetNetworkIdRes},
     0x0f : {'Req' : None, 'Res': None}
     }
 
