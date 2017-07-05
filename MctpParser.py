@@ -253,7 +253,7 @@ def ParseMctpGetMessageTypeSupportRes(Frame):
             #list supported message types
             for MsgType in Frame[2:]:
                 Template += "{MsgTypeVar:#04x} : Supported - {MsgTypeDesc:s}\n\r".format(MsgTypeVar = MsgType,
-                                                                         MsgTypeDesc = Mctp_Message_Types.get(MsgType, "Unknown Message Type"))
+                                                                         MsgTypeDesc = GetMctpMessageType(MsgType))
 
             Result = Template.format(CompCode = Frame[0],
                                      CompCodeDesc = Mctp_Control_Message_Status_Codes.get(Frame[0]),
