@@ -87,17 +87,12 @@ SUCCESS = 0x00
 
 def GetMctpControlMessageCommandCode(CmdCode):
     return '{Code:#04x} : {Desc}'.format(Code = CmdCode, Desc = Mctp_Control_Message_Command_Codes.get(CmdCode,'Transport Specific Command Code'))
-  
+
 def GetMctpControlMessageCommandName(CmdCode):
     return Mctp_Control_Message_Command_Codes.get(CmdCode,'Reserved')
-  
+
 def GetMctpMessageType(TypeCode):
     return Mctp_Message_Types.get(TypeCode,'Reserved')
-   
-
-def GetSetEndpointEidOperationName(Oper):
-  
-    return
 
 
 #0x01 : 'Set Endpoint EID'
@@ -121,7 +116,7 @@ def ParseMctpSetEndpointEidReq(Frame):
                                  EndpointID = Frame[1])
       
     else:
-       Result = Template + "Error Invalid length"
+       Result = Template + "Error!!! Invalid Data length"
     return Result
 
 def ParseMctpSetEndpointEidRes(Frame):
@@ -495,7 +490,12 @@ def ParseMctpGetRoutingTableRes(Frame):
   
     Mctp_Frame_Length = len(Frame)
     Mctp_Frame_Expected_Length = 0
-  
+    
+    #Parse Completion code
+    Template += "{Data[0]:#04x} : {Data[1]:s},\n\r"
+    DataToDisplay.append(Frame[0]) #Completion Code
+    DataToDisplay.append(Mctp_Control_Message_Status_Codes.get(Frame[0])) #Completion Code Description
+        
     #The Frame with SUCCESS CC shall have at minimum 3 bytes (3 common data bytes)
     if Frame[0]== SUCCESS:
         if Mctp_Frame_Length >= 3:
@@ -516,12 +516,9 @@ def ParseMctpGetRoutingTableRes(Frame):
    
             if Mctp_Frame_Length == Mctp_Frame_Expected_Length:
 
-                Template += "{Data[0]:#04x} : {Data[1]:s},\n\r"
                 Template += "{Data[2]:#04x} : {Data[3]:s},\n\r"
                 Template += "{Data[4]:#04x} : Entries Count in this response,\n\r"
                
-                DataToDisplay.append(Frame[0]) #Completion Code
-                DataToDisplay.append(Mctp_Control_Message_Status_Codes.get(Frame[0])) #Completion Code Description
                 DataToDisplay.append(Frame[1]) #Next Entry Handle
                 DataToDisplay.append(Mctp_Entry_Handle.get(Frame[1],'Next Entry Handle')) #Next Entry Handle Description
                 DataToDisplay.append(Frame[2]) #Entries Count
@@ -529,18 +526,12 @@ def ParseMctpGetRoutingTableRes(Frame):
                 for Entry in GetRoutingTableEntries:
                     Template += ParseGetRoutingEntry(Entry)
       
-        else:
-            Template += "Error!!! Frame length different than expected"
+            else:
+                Template += "Error!!! Frame length different than expected"
 
-    #The Frame with other CC shall have at minimum 1 byte
-    else:
-        if Mctp_Frame_Length == 1:
-            Template += "{Data[0]:#04x} : {Data[1]:s},\n\r"
-            DataToDisplay.append(Frame[0]) #Completion Code
-            DataToDisplay.append(Mctp_Control_Message_Status_Codes.get(Frame[0])) #Completion Code Description
-                                
-        else:
-            Template += "Error!!! Frame length different than expected" 
+    #Frame with other CC shall have 1 byte
+    elif Mctp_Frame_Length != 1:
+        Template += "Error!!! Frame length different than expected" 
   
     Result = Template.format(Data = DataToDisplay)
     return Result
@@ -754,44 +745,44 @@ if __name__ == "__main__":
 # 0x70 0x00 0x10 0x01 0x17 0x00 0x10 0x7F 0x00 0x00 0x1A 0xB4 0x01 0x00 0x00 0xFB 0x00 0x82 0x0D     req0D discovery notify
 # 0x70 0x00 0x10 0x01 0x17 0x00 0x10 0x7F 0x00 0x00 0x1A 0xB4 0x01 0x00 0x00 0xD9 0x00 0x87 0x02     req02 Get Endpoint EID
 
-    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x01, 0x00, 0x60]    #Set EID Req
-    ParseMctpFrame(Mctp_Test_Frame)
+    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x01, 0x00, 0x60]    #Set EID Req
+    #ParseMctpFrame(Mctp_Test_Frame)
 
-    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x01, 0x00, 0x00, 0x60, 0x03]    #Set EID Res
-    ParseMctpFrame(Mctp_Test_Frame)
+    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x01, 0x00, 0x00, 0x60, 0x03]    #Set EID Res
+    #ParseMctpFrame(Mctp_Test_Frame)
 
-    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x02]    #Get EID Req
-    ParseMctpFrame(Mctp_Test_Frame)
+    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x02]    #Get EID Req
+    #ParseMctpFrame(Mctp_Test_Frame)
 
-    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x02, 0x00, 0x61, 0x00, 0x00]    #Get EID Res
-    ParseMctpFrame(Mctp_Test_Frame)
+    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x02, 0x00, 0x61, 0x00, 0x00]    #Get EID Res
+    #ParseMctpFrame(Mctp_Test_Frame)
 
-    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x06, 0x01]    #0x06 Req VDM Support Req
-    ParseMctpFrame(Mctp_Test_Frame)
+    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x06, 0x01]    #0x06 Req VDM Support Req
+    #ParseMctpFrame(Mctp_Test_Frame)
 
-    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x06, 0x00, 0xff, 0x01, 0x80, 0x86, 0x00, 0x00]    #Get EID Res
-    ParseMctpFrame(Mctp_Test_Frame)
+    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x06, 0x00, 0xff, 0x01, 0x80, 0x86, 0x00, 0x00]    #Get EID Res
+    #ParseMctpFrame(Mctp_Test_Frame)
 
-    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x05, 0x00, 0x02, 0x00, 0x7e]    #0x05 Get Message Type Support res
-    ParseMctpFrame(Mctp_Test_Frame)
+    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x05, 0x00, 0x02, 0x00, 0x7e]    #0x05 Get Message Type Support res
+    #ParseMctpFrame(Mctp_Test_Frame)
 
-    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x05]    #Response with no payload
-    ParseMctpFrame(Mctp_Test_Frame)
+    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x05]    #Response with no payload
+    #ParseMctpFrame(Mctp_Test_Frame)
 
-    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x01]    #Request with no payload
-    ParseMctpFrame(Mctp_Test_Frame)
+    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x01]    #Request with no payload
+    #ParseMctpFrame(Mctp_Test_Frame)
 
     Mctp_Test_Frame = [0x01, 0x60, 0x50, 0xC0, 0x00, 0x00, 0x0A, 0x00, 0xFF, 0x02, 0x01, 0x60, 0x00, 0x02, 0x08, 0x02, 0x01, 0x00, 0x01, 0x61, 0x00, 0x02, 0x08, 0x02, 0x18, 0x00]
     ParseMctpFrame(Mctp_Test_Frame)
 
-    Mctp_Test_Frame = [0x01, 0x60, 0x50, 0xC0, 0x00, 0x00, 0x0A, 0x05]
-    ParseMctpFrame(Mctp_Test_Frame)
+    #Mctp_Test_Frame = [0x01, 0x60, 0x50, 0xC0, 0x00, 0x00, 0x0A, 0x05]
+    #ParseMctpFrame(Mctp_Test_Frame)
 
-    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x07, 0x00, 0x60, 0x18, 0x00]    #0x07 Resolve Endpoint ID Res
-    ParseMctpFrame(Mctp_Test_Frame)
+    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x07, 0x00, 0x60, 0x18, 0x00]    #0x07 Resolve Endpoint ID Res
+    #ParseMctpFrame(Mctp_Test_Frame)
 
-    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x04, 0x00, 0x02, 0xaa, 0xbb, 0xcc, 0xdd, 0xaa, 0xbb, 0xcc, 0xdd]    #0x04 Get MCTP version support Res
-    ParseMctpFrame(Mctp_Test_Frame)
+    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x04, 0x00, 0x02, 0xaa, 0xbb, 0xcc, 0xdd, 0xaa, 0xbb, 0xcc, 0xdd]    #0x04 Get MCTP version support Res
+    #ParseMctpFrame(Mctp_Test_Frame)
 
     #print(MctpTestTransportHeader)
     #print(ParseMctpTransportHeader(MctpTestTransportHeader))
