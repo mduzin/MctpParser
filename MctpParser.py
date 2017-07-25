@@ -95,11 +95,6 @@ def GetMctpMessageType(TypeCode):
     return Mctp_Message_Types.get(TypeCode,'Reserved')
    
 
-def GetSetEndpointEidOperationName(Oper):
-  
-    return
-
-
 #0x01 : 'Set Endpoint EID'
 def ParseMctpSetEndpointEidReq(Frame):
     Template = ""
@@ -126,39 +121,62 @@ def ParseMctpSetEndpointEidReq(Frame):
 
 def ParseMctpSetEndpointEidRes(Frame):
     Template = ""
-    if len(Frame) == 4:
-        Mctp_Set_Endpoint_Eid_Assignment_Status= {
+    DataToDisplay = {}
+
+    Mctp_Set_Endpoint_Eid_Assignment_Status= {
             0b00 : 'EID assignment accepted',
             0b01 : 'EID assignment rejected',
             0b10 : 'reserved',
             0b11 : 'reserved'}
-        Mctp_Set_Endpoint_Eid_Allocation_Status= {
+    Mctp_Set_Endpoint_Eid_Allocation_Status= {
             0b00 : 'Device does not use an EID pool',
             0b01 : 'Endpoint requires EID pool allocation',
             0b10 : 'Endpoint uses an EID pool and has already received an allocation for that pool',
             0b11 : 'reserved'}
-      
-        Template += "{CompCode:#04x} : {CompCodeDesc:s},\n\r"
-        Template += "{SecondByte:#04x} : {rsvd1:#04b}=reserved, {EidAssignStatus:#04b}={EidAssignDesc:s}, {rsvd2:#04b}=reserved, {EidAllocStatus:#04b}={EidAllocDesc:s},\n\r"
-        Template += "{EidSetting:#04x} : EID Setting,\n\r"
-        Template += "{EidPoolSize:#04x} : EID Pool Size,\n\r"
 
-    
-        Result = Template.format(CompCode = Frame[0],
-                                 CompCodeDesc = Mctp_Control_Message_Status_Codes.get(Frame[0]),
-                                 SecondByte = Frame[1],
-                                 rsvd1 = (Frame[1] & 0xc0) >> 6,
-                                 EidAssignStatus = (Frame[1] & 0x30) >> 4,
-                                 EidAssignDesc = Mctp_Set_Endpoint_Eid_Assignment_Status.get((Frame[1] & 0x30) >> 4, "Error unknown EID Assignment Status"),
-                                 rsvd2 = (Frame[1] & 0x0c) >> 2,
-                                 EidAllocStatus = Frame[1] & 0x03,
-                                 EidAllocDesc = Mctp_Set_Endpoint_Eid_Allocation_Status.get(Frame[1] & 0x03, "Error unknown EID Allocation Status"),
-                                 EidSetting = Frame[2],
-                                 EidPoolSize = Frame[3])
-                              
+    #Completion Code
+    Template += "{Data[CompCode]:#04x} : {Data[CompCodeDesc]:s},\n\r"
+    DataToDisplay['CompCode']= Frame[0]
+    DataToDisplay['CompCodeDesc'] = Mctp_Control_Message_Status_Codes.get(Frame[0])
 
+    #Successful response
+    if SUCCESS == Frame[0]:
+        #...with valid payload length
+        if len(Frame[1:]) == 3:
+            Template += "{Data[SecondByte]:#04x} : {Data[rsvd1]:#04b}=reserved, {Data[EidAssignStatus]:#04b}={Data[EidAssignDesc]:s}, {Data[rsvd2]:#04b}=reserved, {Data[EidAllocStatus]:#04b}={Data[EidAllocDesc]:s},\n\r"
+            Template += "{Data[EidSetting]:#04x} : EID Setting,\n\r"
+            Template += "{Data[EidPoolSize]:#04x} : EID Pool Size,\n\r"
+     
+            DataToDisplay['SecondByte'] = Frame[1]
+            DataToDisplay['rsvd1'] = (Frame[1] & 0xc0) >> 6
+            DataToDisplay['EidAssignStatus'] = (Frame[1] & 0x30) >> 4
+            DataToDisplay['EidAssignDesc'] = Mctp_Set_Endpoint_Eid_Assignment_Status.get((Frame[1] & 0x30) >> 4, "Error unknown EID Assignment Status")
+            DataToDisplay['rsvd2'] = (Frame[1] & 0x0c) >> 2
+            DataToDisplay['EidAllocStatus'] = Frame[1] & 0x03
+            DataToDisplay['EidAllocDesc'] = Mctp_Set_Endpoint_Eid_Allocation_Status.get(Frame[1] & 0x03, "Error unknown EID Allocation Status")
+            DataToDisplay['EidSetting'] = Frame[2]
+            DataToDisplay['EidPoolSize'] = Frame[3]
+           
+        #...with invalid payload length
+        elif len(Frame[1:]) > 0:
+            Template += "{Data[InvalidPayload]} : Error!!! Invalid payload length,\n\r"
+
+            DataToDisplay['InvalidPayload'] = [hex(item) for item in Frame[1:]]  #Invalid payload
+
+        #...with no payload
+        else:
+            Template += "Error!!! No payload\n\r"
+           
+
+    #Unsuccesful response "SUCCESS != Frame[0]:"
     else:
-        Result = Template + "Error Invalid length"  
+        #...with unexpected payload
+        if len(Frame[1:]) > 0:
+            Template += "{Data[UnexpectedData]} : Error!!! Unexpected data,\n\r"
+
+            DataToDisplay['UnexpectedData'] = [hex(item) for item in Frame[1:]] #Unexpected data
+
+    Result = Template.format(Data = DataToDisplay)
     return Result
 
 
@@ -175,37 +193,61 @@ def ParseMctpGetEndpointEidReq(Frame):
 
 def ParseMctpGetEndpointEidRes(Frame):
     Template = ""
-    if len(Frame) == 4:
-        Mctp_Get_Endpoint_Type= {
-            0b00 : 'simple endpoint',
-            0b01 : 'bus owner/bridge',
-            0b10 : 'reserved',
-            0b11 : 'reserved'}
-        Mctp_Get_Endpoint_Id_Type= {
-            0b00 : 'dynamic EID',
-            0b01 : 'static EID supported. The endpoint was configured with a static EID.',
-            0b10 : 'static EID supported. Present EID matches static EID',
-            0b11 : 'static EID supported. Present EID does not match static EID'}
+    DataToDisplay = {}
 
-        Template += "{CompCode:#04x} : {CompCodeDesc:s},\n\r"
-        Template += "{EndpointID:#04x} : Endpoint ID,\n\r"
-        Template += "{ThirdByte:#04x} : {rsvd1:#04b}=reserved, {EndType:#04b}={EndTypeDesc:s}, {rsvd2:#04b}=reserved, {EndIdType:#04b}={EndIdTypeDesc:s} \n\r"
-        Template += "{MediumSpecific:#04x} : Medium-Specific Information\n\r"
+    Mctp_Get_Endpoint_Type= {
+        0b00 : 'simple endpoint',
+        0b01 : 'bus owner/bridge',
+        0b10 : 'reserved',
+        0b11 : 'reserved'}
+    Mctp_Get_Endpoint_Id_Type= {
+        0b00 : 'dynamic EID',
+        0b01 : 'static EID supported. The endpoint was configured with a static EID.',
+        0b10 : 'static EID supported. Present EID matches static EID',
+        0b11 : 'static EID supported. Present EID does not match static EID'}
 
-        Result = Template.format(CompCode = Frame[0],
-                                 CompCodeDesc = Mctp_Control_Message_Status_Codes.get(Frame[0]),
-                                 EndpointID = Frame[1],
-                                 ThirdByte = Frame[2],
-                                 rsvd1 = (Frame[2] & 0xc0) >>6,
-                                 EndType =  (Frame[2] & 0x30) >>4,
-                                 EndTypeDesc = Mctp_Get_Endpoint_Type.get((Frame[2] & 0x30) >>4, 'Error Unknown Endpoint Type'),
-                                 rsvd2 = (Frame[2] & 0x0c) >>2,
-                                 EndIdType = Frame[2] & 0x03,
-                                 EndIdTypeDesc = Mctp_Get_Endpoint_Id_Type.get(Frame[2] & 0x03, 'Error Unknown Endpoint ID Type' ),
-                                 MediumSpecific = Frame[3])
-      
+    #Completion Code
+    Template += "{Data[CompCode]:#04x} : {Data[CompCodeDesc]:s},\n\r"
+    DataToDisplay['CompCode']= Frame[0]
+    DataToDisplay['CompCodeDesc'] = Mctp_Control_Message_Status_Codes.get(Frame[0])
+
+    #Successful response
+    if SUCCESS == Frame[0]:
+        #...with valid payload length
+        if len(Frame[1:]) == 3:
+            Template += "{Data[EndpointID]:#04x} : Endpoint ID,\n\r"
+            Template += "{Data[ThirdByte]:#04x} : {Data[rsvd1]:#04b}=reserved, {Data[EndType]:#04b}={Data[EndTypeDesc]:s}, {Data[rsvd2]:#04b}=reserved, {Data[EndIdType]:#04b}={Data[EndIdTypeDesc]:s} \n\r"
+            Template += "{Data[MediumSpecific]:#04x} : Medium-Specific Information\n\r"
+
+            DataToDisplay['EndpointID'] = Frame[1]
+            DataToDisplay['ThirdByte'] = Frame[2]
+            DataToDisplay['rsvd1'] = (Frame[2] & 0xc0) >>6
+            DataToDisplay['EndType'] = (Frame[2] & 0x30) >>4
+            DataToDisplay['EndTypeDesc'] = Mctp_Get_Endpoint_Type.get((Frame[2] & 0x30) >>4, 'Error Unknown Endpoint Type')
+            DataToDisplay['rsvd2'] = (Frame[2] & 0x0c) >>2
+            DataToDisplay['EndIdType'] = Frame[2] & 0x03
+            DataToDisplay['EndIdTypeDesc'] = Mctp_Get_Endpoint_Id_Type.get(Frame[2] & 0x03, 'Error Unknown Endpoint ID Type')
+            DataToDisplay['MediumSpecific'] = Frame[3]
+        #...with invalid payload length
+        elif len(Frame[1:]) > 0:
+            Template += "{Data[InvalidPayload]} : Error!!! Invalid payload length,\n\r"
+
+            DataToDisplay['InvalidPayload'] = [hex(item) for item in Frame[1:]]  #Invalid payload
+
+        #...with no payload
+        else:
+            Template += "Error!!! No payload\n\r"
+
+    #Unsuccesful response "SUCCESS != Frame[0]:"   
     else:
-        Result = Template + "Error Invalid length"  
+       #...with unexpected payload
+       if len(Frame[1:]) > 0:
+           Template += "{Data[UnexpectedData]} : Error!!! Unexpected data,\n\r"
+
+           DataToDisplay['UnexpectedData'] = [hex(item) for item in Frame[1:]] #Unexpected data
+      
+
+    Result = Template.format(Data = DataToDisplay)
     return Result
       
   
@@ -377,9 +419,9 @@ def ParseMctpResolveEndpointIdRes(Frame):
     DataToDisplay.append(Mctp_Control_Message_Status_Codes.get(Frame[0]))  #Completion Code Description
    
     #Successful respone
-    if Frame[0] == SUCCESS:
+    if SUCCESS == Frame[0]:
         #...with valid payload
-        if len(Frame[1:]) > 1:
+        if len(Frame[1:]) > 2:
             #(physcial address length - cannot be estimated neither parsed)
             Template += "{Data[2]:#04x} : Bridge Endpoint ID,\n\r"
             Template += "{Data[3]}: Physical Address\n\r"
@@ -397,17 +439,15 @@ def ParseMctpResolveEndpointIdRes(Frame):
             Template += "Error!!! No payload\n\r"
 
 
-    #Unsuccesful respone with unexpected payload
-    elif (Frame[0] != SUCCESS):
-
+    #Unsuccesful respone "SUCCESS != Frame[0]:"
+    else: 
+        #...with unexpected payload
         if len(Frame[1:]) > 0:
             Template += "{Data[2]} : Error!!! Unexpected data,\n\r"
 
             DataToDisplay.append([hex(item) for item in Frame[1:]])  #Unexpected data
 
-    #other cases (i.e: Succesfull resp. with no payload etc.)
-    else:
-        Template += ": Error!!! Unregonized error\n\r"
+  
    
            
     Result = Template.format(Data = DataToDisplay)
@@ -640,8 +680,8 @@ def ParseMctpGetNetworkIdRes(Frame):
 
 Mctp_Control_Message_Handlers = {
     0x00 : {'Req' : None, 'Res': None}, #Reserved
-    0x01 : {'Req' : ParseMctpSetEndpointEidReq, 'Res': ParseMctpSetEndpointEidRes}, #Done
-    0x02 : {'Req' : ParseMctpGetEndpointEidReq, 'Res': ParseMctpGetEndpointEidRes}, #Done
+    0x01 : {'Req' : ParseMctpSetEndpointEidReq, 'Res': ParseMctpSetEndpointEidRes}, #Done + Fixed
+    0x02 : {'Req' : ParseMctpGetEndpointEidReq, 'Res': ParseMctpGetEndpointEidRes}, #Done + Fixed
     0x03 : {'Req' : ParseMctpGetEndpointUuidReq, 'Res': ParseMctpGetEndpointUuidRes},
     0x04 : {'Req' : ParseMctpGetMctpVersionSupportReq, 'Res': ParseMctpGetMctpVersionSupportRes},
     0x05 : {'Req' : ParseMctpGetMessageTypeSupportReq, 'Res': ParseMctpGetMessageTypeSupportRes}, #Done
@@ -776,17 +816,53 @@ if __name__ == "__main__":
 # 0x70 0x00 0x10 0x01 0x17 0x00 0x10 0x7F 0x00 0x00 0x1A 0xB4 0x01 0x00 0x00 0xFB 0x00 0x82 0x0D     req0D discovery notify
 # 0x70 0x00 0x10 0x01 0x17 0x00 0x10 0x7F 0x00 0x00 0x1A 0xB4 0x01 0x00 0x00 0xD9 0x00 0x87 0x02     req02 Get Endpoint EID
 
+#--------------------------------------------------Start 0x01------------------------------------------------------------------------------------------------------
     #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x01, 0x00, 0x60]    #Set EID Req
     #ParseMctpFrame(Mctp_Test_Frame)
 
-    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x01, 0x00, 0x00, 0x60, 0x03]    #Set EID Res
+    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x01, 0x00, 0x00, 0x60, 0x03]    #Set EID Res, succesfull, valid
     #ParseMctpFrame(Mctp_Test_Frame)
 
-    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x02]    #Get EID Req
+    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x01, 0x00, 0x00, 0x60]    #Set EID Res, succesfull, invalid - too short
     #ParseMctpFrame(Mctp_Test_Frame)
 
-    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x02, 0x00, 0x61, 0x00, 0x00]    #Get EID Res
+    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x01, 0x00, 0x00, 0x60, 0x61, 0x62]    #Set EID Res, succesfull, invalid - too long
     #ParseMctpFrame(Mctp_Test_Frame)
+
+    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x01, 0x00]    #Set EID Res, succesfull, invalid - no payload
+    #ParseMctpFrame(Mctp_Test_Frame)
+
+    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x01, 0x04]    #Set EID Res, Unsuccesfull, valid
+    #ParseMctpFrame(Mctp_Test_Frame)
+
+    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x01, 0x02, 0x11, 0x22]    #Set EID Res, Unsuccesfull, invalid - unexpected payload
+    #ParseMctpFrame(Mctp_Test_Frame)
+
+#--------------------------------------------------End 0x01--------------------------------------------------------------------------------------------------------
+#--------------------------------------------------Start 0x02------------------------------------------------------------------------------------------------------
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x02]    #Get EID Req
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x02, 0x00, 0x61, 0x00, 0x00]    #Get EID Res, successful, valid
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x02, 0x00, 0x61, 0x00]    #Get EID Res, successful, invalid - too short
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x02, 0x00, 0x61, 0x00, 0x22, 0x33]    #Get EID Res, successful, invalid - too long
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x02, 0x00]    #Get EID Res, successful, invalid - no payload
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x02, 0x01]    #Get EID Res, unsuccessful, valid
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x02, 0x01, 0x99]    #Get EID Res, unsuccessful, invalid - unexpected payload
+    ParseMctpFrame(Mctp_Test_Frame)
+
+#--------------------------------------------------End 0x02--------------------------------------------------------------------------------------------------------
 
     #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x06, 0x01]    #0x06 Req VDM Support Req
     #ParseMctpFrame(Mctp_Test_Frame)
@@ -813,34 +889,34 @@ if __name__ == "__main__":
     #ParseMctpFrame(Mctp_Test_Frame)
 
     #Testing 0x07 Resolve Enpoint ID
+#--------------------------------------------------Start 0x07------------------------------------------------------------------------------------------------------
+    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x07, 0x50]    #Request, valid
+    #ParseMctpFrame(Mctp_Test_Frame)
 
-    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x07, 0x50]    #Request, valid
-    ParseMctpFrame(Mctp_Test_Frame)
+    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x07]    #Request, wrong length, missing data
+    #ParseMctpFrame(Mctp_Test_Frame)
 
-    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x07]    #Request, wrong length, missing data
-    ParseMctpFrame(Mctp_Test_Frame)
+    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x07, 0x50, 0x51]    #Request, wrong length, too long
+    #ParseMctpFrame(Mctp_Test_Frame)
 
-    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x07, 0x50, 0x51]    #Request, wrong length, too long
-    ParseMctpFrame(Mctp_Test_Frame)
-
-    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x07, 0x00, 0x50, 0x12, 0x34]    #Response, successfull ,valid
-    ParseMctpFrame(Mctp_Test_Frame)
+    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x07, 0x00, 0x50, 0x12, 0x34]    #Response, successfull ,valid
+    #ParseMctpFrame(Mctp_Test_Frame)
    
-    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x07, 0x00, 0x50]    #Response, successfull ,invalid - too short
-    ParseMctpFrame(Mctp_Test_Frame)
+    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x07, 0x00, 0x50]    #Response, successfull ,invalid - too short
+    #ParseMctpFrame(Mctp_Test_Frame)
 
-    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x07, 0x00]    #Response, successfull ,invalid - no payload
-    ParseMctpFrame(Mctp_Test_Frame)
+    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x07, 0x00]    #Response, successfull ,invalid - no payload
+    #ParseMctpFrame(Mctp_Test_Frame)
 
-    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x07]    #Response, successfull , no CC + no payload
-    ParseMctpFrame(Mctp_Test_Frame)
+    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x07]    #Response, successfull , no CC + no payload
+    #ParseMctpFrame(Mctp_Test_Frame)
 
-    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x07, 0x03]    #Response, unsuccessfull ,valid
-    ParseMctpFrame(Mctp_Test_Frame)
+    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x07, 0x03]    #Response, unsuccessfull ,valid
+    #ParseMctpFrame(Mctp_Test_Frame)
 
-    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x07, 0x03, 0x99, 0x88]    #Response, unsuccessfull ,invalid
-    ParseMctpFrame(Mctp_Test_Frame)
-   
+    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x07, 0x03, 0x99, 0x88]    #Response, unsuccessfull ,invalid
+    #ParseMctpFrame(Mctp_Test_Frame)
+#--------------------------------------------------End 0x07------------------------------------------------------------------------------------------------------
 
     #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x07, 0x00, 0x60, 0x18, 0x00]    #0x07 Resolve Endpoint ID Res
     #ParseMctpFrame(Mctp_Test_Frame)
