@@ -37,7 +37,7 @@ def ParseMctpPcieFrame(PcieFrame):
         #<TODO:>parse PCIe VDM Data (parse MCTP Frame)
         
         #Length of the PCIe VDM Data in bytes
-        Length = PcieFrame[3] * 4
+        Length = (((PcieFrame[2] & 0x3) << 8) + PcieFrame[3]) * 4
         PadLen = (PcieFrame[6] & 0x30)>>4
         MctpPacketPayload = PcieFrame[16:-PadLen]
         
