@@ -34,9 +34,10 @@ def GetMctpPcieVdmRoutingType(RoutingType):
         }
     return '{Type:#05b} : {Desc}'.format(Type = RoutingType, Desc = Mctp_Routing_Type.get(RoutingType,'Not supported for MCTP'))
 
-def ParseMctpPcieVdmHeader(Header):
-    Template = ""
+def ParseMctpPcieHeader(Header):
+    Template = "PCIe Medium-Specific Header:"
     DataToDisplay = {}
+    
     
     
     Result = Template.format(Data = DataToDisplay)
@@ -47,18 +48,17 @@ def ParseMctpPcieVdmHeader(Header):
 def ParseMctpPcieFrame(PcieFrame):
     #check basic frame size
     if len(PcieFrame) > PCIE_VDM_HEADER_LEN:
-        #<TODO:>parse PCIe VDM Header
-        #<TODO:>parse PCIe VDM Data (parse MCTP Frame)
+        #parse PCIe VDM Header
+        ParseMctpPcieHeader(PcieFrame[:12])
         
         #Length of the PCIe VDM Data in bytes
         Length = (((PcieFrame[2] & 0x3) << 8) + PcieFrame[3]) * 4
-        PadLen = (PcieFrame[6] & 0x30)>>4
-        MctpPacketPayload = PcieFrame[16:-PadLen]
         
         #check PCIe VDM Data Lenght. PCIe VDM Data starts from 16th byte
         if len(PcieFrame[16:]) == Length:
-            #add MCTP Transport header bytes [12:16]
-            MctpFrame = PcieFrame[12:16] + MctpPacketPayload
+            PadLen = (PcieFrame[6] & 0x30)>>4
+            MctpFrame = PcieFrame[12:-PadLen]
+            #parce MCTP Frame
             MctpParser.ParseMctpFrame(MctpFrame)
         else:
             print("Error: Invalid MCTP PCIe VDM Data length.")
