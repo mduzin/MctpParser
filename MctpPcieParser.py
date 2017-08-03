@@ -12,6 +12,20 @@ import MctpParser
 #Constatans
 PCIE_VDM_HEADER_LEN = 16
 
+def GetMctpPcieBdfAddress(Frame):
+    Template = ""
+    if len(Frame) == 2:
+        Template += "BDF:{BDF:#06x} - Bus:{Bus:#04x}/Device:{Device:#04x}/Function:{Function:#04x}"
+
+        Result = Template.format(BDF = ((Frame[0]<<8) + Frame[1]),
+                                 Bus = Frame[0],
+                                 Device = (Frame[1] & 0xf8) >> 3,
+                                 Function = Frame[1] & 0x7)
+    else:
+        Result = "Error!!! Invalid BDF length."
+                                   
+    return Result
+
 def GetMctpPcieVdmRoutingType(RoutingType):
     Mctp_Routing_Type = {
         0b000 : 'Route to Root Complex',
