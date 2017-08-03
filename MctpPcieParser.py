@@ -15,7 +15,7 @@ PCIE_VDM_HEADER_LEN = 16
 def GetMctpPcieBdfAddress(Frame):
     Template = ""
     if len(Frame) == 2:
-        Template += "BDF:{BDF:#06x} - Bus:{Bus:#04x}/Device:{Device:#04x}/Function:{Function:#04x}"
+        Template += "{BDF:#06x}:BDF - {Bus:#04x}:Bus/{Device:#04x}:Device/{Function:#04x}:Function"
 
         Result = Template.format(BDF = ((Frame[0]<<8) + Frame[1]),
                                  Bus = Frame[0],
@@ -37,6 +37,12 @@ def GetMctpPcieVdmRoutingType(RoutingType):
 def ParseMctpPcieHeader(Header):
     Template = "PCIe Medium-Specific Header:"
     DataToDisplay = {}
+    
+    Template += "\n\r"
+    Template += "{Data[PciRequesterId]:s} : PCI Requester ID,\n\r"
+    Template += "{Data[PciTargetId]:s} : PCI Target ID\n\r"
+    DataToDisplay['PciRequesterId']= GetMctpPcieBdfAddress(Header[4:6])
+    DataToDisplay['PciTargetId']= GetMctpPcieBdfAddress(Header[8:10])
     
     
     
