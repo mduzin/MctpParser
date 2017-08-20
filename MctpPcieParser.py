@@ -58,10 +58,12 @@ def ParseMctpPcieHeader(Header):
     Template = "PCIe Medium-Specific Header: \n\r"
     DataToDisplay = {}
 
+    Template += "{Data[RoutingType]:s} : Routing Type,\n\r"
     Template += "{Data[PciRequesterId]:s} : PCI Requester ID,\n\r"
     Template += "{Data[MessageCode]:s} : Message Code,\n\r"
     Template += "{Data[PciTargetId]:s} : PCI Target ID\n\r"
     Template += "{Data[VendorId]:s} : Vendor Id\n\r"
+    DataToDisplay['RoutingType']= GetMctpPcieVdmRoutingType(Header[0] & 0x7)
     DataToDisplay['PciRequesterId']= GetMctpPcieBdfAddress(Header[4:6])
     DataToDisplay['MessageCode']= GetMctpMessageCode(Header[7])
     DataToDisplay['PciTargetId']= GetMctpPcieBdfAddress(Header[8:10])
