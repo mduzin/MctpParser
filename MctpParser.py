@@ -114,7 +114,7 @@ def GetMctpMessageType(TypeCode):
     return Mctp_Message_Types.get(TypeCode,'Reserved')
 
 def GetMctpEidDesc(Eid,Dict=Mctp_Eid_Values,Default="Eid Value"):
-    return Dict.get(Eid)
+    return Dict.get(Eid,Default)
 
 def GetMctpDestEidDesc(Eid):
     return GetMctpEidDesc(Eid,Mctp_Destination_Eid_Values)
@@ -997,7 +997,7 @@ if __name__ == "__main__":
     Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x07, 0x03]    #Response, unsuccessfull ,valid 
     ParseMctpFrame(Mctp_Test_Frame)
 
-    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x07, 0x03, 0x99, 0x88]    #Response, unsuccessfull ,invalid 
+    Mctp_Test_Frame = [0x01, 0x31, 0x32, 0xD9, 0x00, 0x07, 0x07, 0x03, 0x99, 0x88]    #Response, unsuccessfull ,invalid 
     ParseMctpFrame(Mctp_Test_Frame)
 #--------------------------------------------------End 0x07------------------------------------------------------------------------------------------------------
 
