@@ -113,10 +113,14 @@ def GetMctpControlMessageCommandName(CmdCode):
 def GetMctpMessageType(TypeCode):
     return Mctp_Message_Types.get(TypeCode,'Reserved')
 
-#<TODO:> Check EID value    
-def GetMctpEidValueType(Eid):
-    ...
-    return
+def GetMctpEidDesc(Eid,Dict=Mctp_Eid_Values,Default="Eid Value"):
+    return Dict.get(Eid)
+
+def GetMctpDestEidDesc(Eid):
+    return GetMctpEidDesc(Eid,Mctp_Destination_Eid_Values)
+
+def GetMctpSrcEidDesc(Eid):
+    return GetMctpEidDesc(Eid,Mctp_Source_Eid_Values)
 
 #0x01 : 'Set Endpoint EID'
 def ParseMctpSetEndpointEidReq(Frame):
@@ -851,7 +855,7 @@ def ParseMctpTransportHeader(Header):
         Template += "\t{Rsvd:#x} : Reserved, \n\r"
         Template += "\t{HeadVer:#x} : Header Version.\n\r"
         Template += "{DestEid:#04x} : {DestEidDesc:s} : Destination endpoint ID\n\r"
-        Template += "{SrcEid:#04x} : {SrcEidDesc:#s} : Source endpoint ID\n\r"
+        Template += "{SrcEid:#04x} : {SrcEidDesc:s} : Source endpoint ID\n\r"
         Template += "{ForthByte:#04x} : \n\r" 
         Template += "\t{SOM:#03b} : SOM,\n\r"
         Template += "\t{EOM:#03b} : EOM, \n\r"
@@ -863,9 +867,9 @@ def ParseMctpTransportHeader(Header):
                         Rsvd= Header[0]>>4,
                         HeadVer = Header[0] & 0x0f,
                         DestEid = Header[1],
-                        DestEidDesc = "",
+                        DestEidDesc = GetMctpDestEidDesc(Header[1]),
                         SrcEid = Header[2],
-                        SrcEidDesc = "",
+                        SrcEidDesc = GetMctpSrcEidDesc(Header[2]),
                         ForthByte = Header[3],
                         SOM = (Header[3] & 0x80)>>7,
                         EOM = (Header[3] & 0x40)>>6,
