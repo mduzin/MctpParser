@@ -82,6 +82,24 @@ Mctp_Physical_Medium_Identifiers = {
     0x23 : 'Serial Host2 / PCI (Base Class 0x07 Subclass 0x00)',
     0x24 : 'Asynchronous Serial3 (Between MCs and IMDs)'}
 
+Mctp_Eid_Values = {
+    0x01 : 'Reserved',
+    0x02 : 'Reserved',
+    0x03 : 'Reserved',
+    0x04 : 'Reserved',
+    0x05 : 'Reserved',
+    0x06 : 'Reserved',
+    0x07 : 'Reserved',
+    0xFF : 'Broadcast EID'}
+
+Mctp_Source_Eid_Values = {}
+Mctp_Source_Eid_Values.update(Mctp_Eid_Values)
+Mctp_Source_Eid_Values[0x00] = "Null Source EID"
+
+Mctp_Destination_Eid_Values = {}
+Mctp_Destination_Eid_Values.update(Mctp_Eid_Values)
+Mctp_Destination_Eid_Values[0x00] = "Null Destination EID"
+
 #Global values
 SUCCESS = 0x00
 
@@ -94,7 +112,11 @@ def GetMctpControlMessageCommandName(CmdCode):
    
 def GetMctpMessageType(TypeCode):
     return Mctp_Message_Types.get(TypeCode,'Reserved')
-    
+
+#<TODO:> Check EID value    
+def GetMctpEidValueType(Eid):
+    ...
+    return
 
 #0x01 : 'Set Endpoint EID'
 def ParseMctpSetEndpointEidReq(Frame):
@@ -107,13 +129,15 @@ def ParseMctpSetEndpointEidReq(Frame):
             0b10 : 'Reset EID (optional)',
             0b11 : 'Set Discovered Flag'}
        
-        Template += "{Operation:#04x} : {rsvd:#b}=Reserved, {Oper:#04b}={OperDesc:s},\n\r"
+        Template += "{Operation:#04x} : Operation \n\r" 
+        Template += "\t{rsvd:#b} : Reserved, \n\r"
+        Template += "\t{Oper:#04b} : {OperDesc:s} : Operation.\n\r"
         Template += "{EndpointID:#04x} : Endpoint ID \n\r"
 
         Result = Template.format(Operation = Frame[0],
                                  rsvd = (Frame[0] & 0xfc) >> 2,
                                  Oper = Frame[0] & 0x3,
-                                 OperDesc = Mctp_Set_Endpoint_Eid_Operation.get(Frame[0] & 0x3,'Error unknown Operation Code'),
+                                 OperDesc = Mctp_Set_Endpoint_Eid_Operation.get(Frame[0] & 0x3,'Error!!! unknown Operation Code'),
                                  EndpointID = Frame[1])
        
     else:
@@ -136,7 +160,7 @@ def ParseMctpSetEndpointEidRes(Frame):
             0b11 : 'reserved'}
 
     #Completion Code
-    Template += "{Data[CompCode]:#04x} : {Data[CompCodeDesc]:s},\n\r"
+    Template += "{Data[CompCode]:#04x} : {Data[CompCodeDesc]:s} : Completion Code\n\r"
     DataToDisplay['CompCode']= Frame[0]
     DataToDisplay['CompCodeDesc'] = Mctp_Control_Message_Status_Codes.get(Frame[0])
 
@@ -144,7 +168,11 @@ def ParseMctpSetEndpointEidRes(Frame):
     if SUCCESS == Frame[0]:
         #...with valid payload length
         if len(Frame[1:]) == 3:
-            Template += "{Data[SecondByte]:#04x} : {Data[rsvd1]:#04b}=reserved, {Data[EidAssignStatus]:#04b}={Data[EidAssignDesc]:s}, {Data[rsvd2]:#04b}=reserved, {Data[EidAllocStatus]:#04b}={Data[EidAllocDesc]:s},\n\r"
+            Template += "{Data[SecondByte]:#04x} : \n\r"
+            Template += "\t{Data[rsvd1]:#04b} : Reserved, \n\r"
+            Template += "\t{Data[EidAssignStatus]:#04b} : {Data[EidAssignDesc]:s} : EID Assignment status,\n\r"
+            Template += "\t{Data[rsvd2]:#04b} : Reserved,\n\r"
+            Template += "\t{Data[EidAllocStatus]:#04b}={Data[EidAllocDesc]:s} : EID allocation status.\n\r"
             Template += "{Data[EidSetting]:#04x} : EID Setting,\n\r"
             Template += "{Data[EidPoolSize]:#04x} : EID Pool Size,\n\r"
       
@@ -160,7 +188,7 @@ def ParseMctpSetEndpointEidRes(Frame):
             
         #...with invalid payload length
         elif len(Frame[1:]) > 0:
-            Template += "{Data[InvalidPayload]} : Error!!! Invalid payload length,\n\r"
+            Template += "{Data[InvalidPayload]} : Error!!! Invalid payload length\n\r"
 
             DataToDisplay['InvalidPayload'] = [hex(item) for item in Frame[1:]]  #Invalid payload
 
@@ -173,7 +201,7 @@ def ParseMctpSetEndpointEidRes(Frame):
     else:
         #...with unexpected payload
         if len(Frame[1:]) > 0:
-            Template += "{Data[UnexpectedData]} : Error!!! Unexpected data,\n\r"
+            Template += "{Data[UnexpectedData]} : Error!!! Unexpected data\n\r"
 
             DataToDisplay['UnexpectedData'] = [hex(item) for item in Frame[1:]] #Unexpected data
 
@@ -203,12 +231,12 @@ def ParseMctpGetEndpointEidRes(Frame):
         0b11 : 'reserved'}
     Mctp_Get_Endpoint_Id_Type= {
         0b00 : 'dynamic EID',
-        0b01 : 'static EID supported. The endpoint was configured with a static EID.',
+        0b01 : 'static EID supported.',
         0b10 : 'static EID supported. Present EID matches static EID',
         0b11 : 'static EID supported. Present EID does not match static EID'}
 
     #Completion Code
-    Template += "{Data[CompCode]:#04x} : {Data[CompCodeDesc]:s},\n\r"
+    Template += "{Data[CompCode]:#04x} : {Data[CompCodeDesc]:s} : Completion Code\n\r"
     DataToDisplay['CompCode']= Frame[0]
     DataToDisplay['CompCodeDesc'] = Mctp_Control_Message_Status_Codes.get(Frame[0])
 
@@ -216,8 +244,12 @@ def ParseMctpGetEndpointEidRes(Frame):
     if SUCCESS == Frame[0]:
         #...with valid payload length
         if len(Frame[1:]) == 3:
-            Template += "{Data[EndpointID]:#04x} : Endpoint ID,\n\r"
-            Template += "{Data[ThirdByte]:#04x} : {Data[rsvd1]:#04b}=reserved, {Data[EndType]:#04b}={Data[EndTypeDesc]:s}, {Data[rsvd2]:#04b}=reserved, {Data[EndIdType]:#04b}={Data[EndIdTypeDesc]:s} \n\r"
+            Template += "{Data[EndpointID]:#04x} : Endpoint ID\n\r"
+            Template += "{Data[ThirdByte]:#04x} : Endpoint Type\n\r"
+            Template += "\t{Data[rsvd1]:#04b} : Reserved,\n\r"
+            Template += "\t{Data[EndType]:#04b} : {Data[EndTypeDesc]:s},\n\r"
+            Template += "\t{Data[rsvd2]:#04b} : Eeserved,\n\r"
+            Template += "\t{Data[EndIdType]:#04b}={Data[EndIdTypeDesc]:s}. \n\r"
             Template += "{Data[MediumSpecific]:#04x} : Medium-Specific Information\n\r"
 
             DataToDisplay['EndpointID'] = Frame[1]
@@ -231,7 +263,7 @@ def ParseMctpGetEndpointEidRes(Frame):
             DataToDisplay['MediumSpecific'] = Frame[3]
         #...with invalid payload length
         elif len(Frame[1:]) > 0:
-            Template += "{Data[InvalidPayload]} : Error!!! Invalid payload length,\n\r"
+            Template += "{Data[InvalidPayload]} : Error!!! Invalid payload length\n\r"
 
             DataToDisplay['InvalidPayload'] = [hex(item) for item in Frame[1:]]  #Invalid payload
 
@@ -243,7 +275,7 @@ def ParseMctpGetEndpointEidRes(Frame):
     else:
        #...with unexpected payload
        if len(Frame[1:]) > 0:
-           Template += "{Data[UnexpectedData]} : Error!!! Unexpected data,\n\r"
+           Template += "{Data[UnexpectedData]} : Error!!! Unexpected data\n\r"
 
            DataToDisplay['UnexpectedData'] = [hex(item) for item in Frame[1:]] #Unexpected data
        
@@ -271,7 +303,7 @@ def ParseMctpGetMctpVersionSupportReq(Frame):
     Template = ""
 
     if len(Frame) == 1:
-        Template += "{MsgType:#04x} : Message Type Number - {MsgTypeDesc:s}\n\r"
+        Template += "{MsgType:#04x} : {MsgTypeDesc:s}: Message Type Number\n\r"
         Result = Template.format(MsgType = Frame[0],
                                  MsgTypeDesc = GetMctpMessageType(Frame[0]))
     else:
@@ -280,18 +312,17 @@ def ParseMctpGetMctpVersionSupportReq(Frame):
 
 def ParseMctpGetMctpVersionSupportRes(Frame):
     Template = ""
-    DataToDisplay = []
+    DataToDisplay = {}
 
     #Completion Code
-    Template += "{Data[0]:#04x} : {Data[1]:s},\n\r"
-    
     #Command specific Completion Codes
     MctpGetVersionSupportCompCodes = {0x80 : 'Message type number not supported'}
     #Add common Completion Codes
     MctpGetVersionSupportCompCodes.update(Mctp_Control_Message_Status_Codes)
 
-    DataToDisplay.append(Frame[0])  #Completion Code       
-    DataToDisplay.append(MctpGetVersionSupportCompCodes.get(Frame[0]))  #Completion Code Description
+    Template += "{Data[CompCode]:#04x} : {Data[CompCodeDesc]:s} : Completion Code\n\r"
+    DataToDisplay['CompCode']= Frame[0]
+    DataToDisplay['CompCodeDesc'] = MctpGetVersionSupportCompCodes.get(Frame[0])
     
     #Successful respone - continue parsing
     if Frame[0] == SUCCESS:
@@ -301,10 +332,10 @@ def ParseMctpGetMctpVersionSupportRes(Frame):
             Result = Template + "Error!!! Frame length different than expected"
         else:
              if len(Frame) ==  Frame_Expected_Length: 
-                Template += "{Data[2]:#04x} : Version Number Entry count,\n\r"
+                Template += "{Data['VersionNumberEntryCount']:#04x} : Version Number Entry count\n\r"
                 #<TODO:> Finish implementation
 
-                DataToDisplay.append(Frame[1])  #Version Number Entry count
+                DataToDisplay['VersionNumberEntryCount']= Frame[1]  #Version Number Entry count
     else:
         if len(Frame) != 1:
             Template += "Error!!! Unexpected Data found"
@@ -330,7 +361,7 @@ def ParseMctpGetMessageTypeSupportRes(Frame):
     DataToDisplay = {}
 
     #Completion Code
-    Template += "{Data[CompCode]:#04x} : {Data[CompCodeDesc]:s},\n\r"
+    Template += "{Data[CompCode]:#04x} : {Data[CompCodeDesc]:s} : Completion Code \n\r"
     DataToDisplay['CompCode']= Frame[0]
     DataToDisplay['CompCodeDesc'] = Mctp_Control_Message_Status_Codes.get(Frame[0])
 
@@ -344,17 +375,17 @@ def ParseMctpGetMessageTypeSupportRes(Frame):
         else:
             #...with valid payload length
             if len(Frame[1:]) == PayloadLen:
-                Template += "{Data[MsgTypeCount]:#04x} : MCTP Message Type Count,\n\r"
+                Template += "{Data[MsgTypeCount]:#04x} : MCTP Message Type Count\n\r"
 
                 DataToDisplay['MsgTypeCount']= Frame[1]
 
                 #list supported message types
                 for MsgType in Frame[2:]:
-                    Template += "{MsgTypeVar:#04x} : Supported - {MsgTypeDesc:s}\n\r".format(MsgTypeVar = MsgType,MsgTypeDesc = GetMctpMessageType(MsgType))
+                    Template += "{MsgTypeVar:#04x} : {MsgTypeDesc:s} : Message Type Number\n\r".format(MsgTypeVar = MsgType,MsgTypeDesc = GetMctpMessageType(MsgType))
 
             #...with invalid payload length
             elif len(Frame[1:]) > 0:
-                Template += "{Data[InvalidPayload]} : Error!!! Invalid payload length,\n\r"
+                Template += "{Data[InvalidPayload]} : Error!!! Invalid payload length\n\r"
 
                 DataToDisplay['InvalidPayload'] = [hex(item) for item in Frame[1:]]  #Invalid payload
 
@@ -366,7 +397,7 @@ def ParseMctpGetMessageTypeSupportRes(Frame):
     else:
        #...with unexpected payload
        if len(Frame[1:]) > 0:
-           Template += "{Data[UnexpectedData]} : Error!!! Unexpected data,\n\r"
+           Template += "{Data[UnexpectedData]} : Error!!! Unexpected data\n\r"
 
            DataToDisplay['UnexpectedData'] = [hex(item) for item in Frame[1:]] #Unexpected data 
     
@@ -436,27 +467,28 @@ def ParseMctpResolveEndpointIdReq(Frame):
 
 def ParseMctpResolveEndpointIdRes(Frame):
     Template = ""
-    DataToDisplay = []
+    DataToDisplay = {}
 
-    Template += "{Data[0]:#04x} : {Data[1]:s},\n\r"
-    DataToDisplay.append(Frame[0])  #Completion Code
-    DataToDisplay.append(Mctp_Control_Message_Status_Codes.get(Frame[0]))  #Completion Code Description
+    #Completion Code
+    Template += "{Data[CompCode]:#04x} : {Data[CompCodeDesc]:s} : Completion Code\n\r"
+    DataToDisplay['CompCode']= Frame[0]
+    DataToDisplay['CompCodeDesc'] = Mctp_Control_Message_Status_Codes.get(Frame[0])
     
     #Successful respone 
     if SUCCESS == Frame[0]:
         #...with valid payload
         if len(Frame[1:]) > 2:
             #(physcial address length - cannot be estimated neither parsed)
-            Template += "{Data[2]:#04x} : Bridge Endpoint ID,\n\r"
-            Template += "{Data[3]}: Physical Address\n\r"
+            Template += "{Data[BridgeId]:#04x} : Bridge Endpoint ID\n\r"
+            Template += "{Data[PhysicalAddress]} : Physical Address\n\r"
 
-            DataToDisplay.append(Frame[1])  #Bridge Endpoint ID
-            DataToDisplay.append([hex(item) for item in Frame[2:]]) #Physical Address
+            DataToDisplay['BridgeId']=(Frame[1])  #Bridge Endpoint ID
+            DataToDisplay['PhysicalAddress']=([hex(item) for item in Frame[2:]]) #Physical Address
         #...with invalid payload
         elif len(Frame[1:]) > 0:
-            Template += "{Data[2]} : Error!!! Paylaod too short, missing data,\n\r"
+            Template += "{Data[UnexpectedData]} : Error!!! Paylaod too short, missing data\n\r"
 
-            DataToDisplay.append([hex(item) for item in Frame[1:]])  #Missing data
+            DataToDisplay['UnexpectedData'] = ([hex(item) for item in Frame[1:]])  #Missing data
 
         #no payload
         else:
@@ -467,12 +499,10 @@ def ParseMctpResolveEndpointIdRes(Frame):
     else:  
         #...with unexpected payload
         if len(Frame[1:]) > 0:
-            Template += "{Data[2]} : Error!!! Unexpected data,\n\r"
+            Template += "{Data[UnexpectedData]} : Error!!! Unexpected data\n\r"
 
-            DataToDisplay.append([hex(item) for item in Frame[1:]])  #Unexpected data
-
+            DataToDisplay['UnexpectedData'] = ([hex(item) for item in Frame[1:]])  #Unexpected data
    
-    
             
     Result = Template.format(Data = DataToDisplay) 
     return Result
@@ -733,17 +763,30 @@ def GetMctpControlFramePayloadParser(RqBit,CmdCode):
        
     return Parser_Function_Handler
 
+def GetRqDesc(Rq):
+    Mctp_Rq_Bit= {
+            0b00 : 'Response',
+            0b01 : 'Request',
+            }
+    return Mctp_Rq_Bit.get(Rq,"Error!!! Illegal value")
 
 def ParseMctpControlFrameCommonHeader(Frame):
     Template =  "\n\r"
-    Template += "{FirstByte:#04x} : {IC:#03b}=IC, 0x00=MCTP Control Command,\n\r"
-    Template += "{SecondByte:#04x} : {Rq:#03b}=Rq, {D:#03b}=D, {rsvd:#03b}=rsvd, {InsID:#d} : Instance ID \n\r"
-    Template += "{CommandCode:#04x} : {CommandDesc:s} \n\r"
+    Template += "{FirstByte:#04x} : \n\r"
+    Template += "\t{IC:#03b} : IC, \n\r"
+    Template += "\t0x00 : MCTP Control Command : Message Type.\n\r"
+    Template += "{SecondByte:#04x} :\n\r"
+    Template += "\t{Rq:#03b} : {RqDesc:s} : Request Bit,\n\r"
+    Template += "\t{D:#03b} : Datagram Bit,\n\r"
+    Template += "\t{rsvd:#03b} : Reserved,\n\r"
+    Template += "\t{InsID:#d} : Instance ID. \n\r"
+    Template += "{CommandCode:#04x} : {CommandDesc:s} : Command Code\n\r"
 
     Result = Template.format(FirstByte = Frame[0],
                              IC = (Frame[0] & 0x80) >>7,
                              SecondByte = Frame[1],
                              Rq = (Frame[1] & 0x80) >>7,
+                             RqDesc = GetRqDesc((Frame[1] & 0x80) >>7),
                              D = (Frame[1] & 0x40) >> 6,
                              rsvd = (Frame[1] & 0x20) >> 5,
                              InsID = (Frame[1] & 0x1f),
@@ -804,16 +847,25 @@ def ParseMctpTransportHeader(Header):
     Template = "MCTP Transport Header:"
     if len(Header) == 4:
         Template += "\n\r"
-        Template += "{FirstByte:#04x} : {Rsvd:#x} : Reserved, {Head_Ver:#x} : Header Version,\n\r"
-        Template += "{Dest_Eid:#04x} : Destination endpoint ID,\n\r"
-        Template += "{Src_Eid:#04x} : Source endpoint ID,\n\r"
-        Template += "{ForthByte:#04x} : {SOM:#03b}=SOM, {EOM:#03b}=EOM, {PktSeq:#d}=PktSeq#, {TO:#03b}=TO, {MsgTag:#d}=MsgTag"
+        Template += "{FirstByte:#04x} : \n\r"
+        Template += "\t{Rsvd:#x} : Reserved, \n\r"
+        Template += "\t{HeadVer:#x} : Header Version.\n\r"
+        Template += "{DestEid:#04x} : {DestEidDesc:s} : Destination endpoint ID\n\r"
+        Template += "{SrcEid:#04x} : {SrcEidDesc:#s} : Source endpoint ID\n\r"
+        Template += "{ForthByte:#04x} : \n\r" 
+        Template += "\t{SOM:#03b} : SOM,\n\r"
+        Template += "\t{EOM:#03b} : EOM, \n\r"
+        Template += "\t{PktSeq:#d} : PktSeq#, \n\r"
+        Template += "\t{TO:#03b} : Tag Owner, \n\r"
+        Template += "\t{MsgTag:#d} : Message Tag."
        
         Result = Template.format(FirstByte = Header[0],
                         Rsvd= Header[0]>>4,
-                        Head_Ver = Header[0] & 0x0f,
-                        Dest_Eid = Header[1],
-                        Src_Eid = Header[2],
+                        HeadVer = Header[0] & 0x0f,
+                        DestEid = Header[1],
+                        DestEidDesc = "",
+                        SrcEid = Header[2],
+                        SrcEidDesc = "",
                         ForthByte = Header[3],
                         SOM = (Header[3] & 0x80)>>7,
                         EOM = (Header[3] & 0x40)>>6,
@@ -830,7 +882,6 @@ def ParseMctpTransportHeader(Header):
 
 def ParseMctpFrame(Frame):
     if len(Frame) >= 5:
-        #<TODO:>PrintMctpFrame(Frame)
         ParseMctpTransportHeader(Frame[:4])
         ParseMctpPacketPayload(Frame[4:])
     else:
@@ -844,50 +895,50 @@ if __name__ == "__main__":
 # 0x70 0x00 0x10 0x01 0x17 0x00 0x10 0x7F 0x00 0x00 0x1A 0xB4 0x01 0x00 0x00 0xD9 0x00 0x87 0x02     req02 Get Endpoint EID
 
 #--------------------------------------------------Start 0x01------------------------------------------------------------------------------------------------------
-    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x01, 0x00, 0x60]    #Set EID Req
-    #ParseMctpFrame(Mctp_Test_Frame)
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x01, 0x00, 0x60]    #Set EID Req
+    ParseMctpFrame(Mctp_Test_Frame)
 
-    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x01, 0x00, 0x00, 0x60, 0x03]    #Set EID Res, succesfull, valid
-    #ParseMctpFrame(Mctp_Test_Frame)
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x01, 0x00, 0x00, 0x60, 0x03]    #Set EID Res, succesfull, valid
+    ParseMctpFrame(Mctp_Test_Frame)
 
-    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x01, 0x00, 0x00, 0x60]    #Set EID Res, succesfull, invalid - too short
-    #ParseMctpFrame(Mctp_Test_Frame)
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x01, 0x00, 0x00, 0x60]    #Set EID Res, succesfull, invalid - too short
+    ParseMctpFrame(Mctp_Test_Frame)
 
-    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x01, 0x00, 0x00, 0x60, 0x61, 0x62]    #Set EID Res, succesfull, invalid - too long
-    #ParseMctpFrame(Mctp_Test_Frame)
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x01, 0x00, 0x00, 0x60, 0x61, 0x62]    #Set EID Res, succesfull, invalid - too long
+    ParseMctpFrame(Mctp_Test_Frame)
 
-    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x01, 0x00]    #Set EID Res, succesfull, invalid - no payload
-    #ParseMctpFrame(Mctp_Test_Frame)
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x01, 0x00]    #Set EID Res, succesfull, invalid - no payload
+    ParseMctpFrame(Mctp_Test_Frame)
 
-    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x01, 0x04]    #Set EID Res, Unsuccesfull, valid
-    #ParseMctpFrame(Mctp_Test_Frame)
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x01, 0x04]    #Set EID Res, Unsuccesfull, valid
+    ParseMctpFrame(Mctp_Test_Frame)
 
-    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x01, 0x02, 0x11, 0x22]    #Set EID Res, Unsuccesfull, invalid - unexpected payload
-    #ParseMctpFrame(Mctp_Test_Frame)
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x01, 0x02, 0x11, 0x22]    #Set EID Res, Unsuccesfull, invalid - unexpected payload
+    ParseMctpFrame(Mctp_Test_Frame)
 
 #--------------------------------------------------End 0x01--------------------------------------------------------------------------------------------------------
 #--------------------------------------------------Start 0x02------------------------------------------------------------------------------------------------------
 
-    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x02]    #Get EID Req
-    #ParseMctpFrame(Mctp_Test_Frame)
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x02]    #Get EID Req
+    ParseMctpFrame(Mctp_Test_Frame)
 
-    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x02, 0x00, 0x61, 0x00, 0x00]    #Get EID Res, successful, valid
-    #ParseMctpFrame(Mctp_Test_Frame)
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x02, 0x00, 0x61, 0x00, 0x00]    #Get EID Res, successful, valid
+    ParseMctpFrame(Mctp_Test_Frame)
 
-    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x02, 0x00, 0x61, 0x00]    #Get EID Res, successful, invalid - too short
-    #ParseMctpFrame(Mctp_Test_Frame)
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x02, 0x00, 0x61, 0x00]    #Get EID Res, successful, invalid - too short
+    ParseMctpFrame(Mctp_Test_Frame)
 
-    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x02, 0x00, 0x61, 0x00, 0x22, 0x33]    #Get EID Res, successful, invalid - too long
-    #ParseMctpFrame(Mctp_Test_Frame)
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x02, 0x00, 0x61, 0x00, 0x22, 0x33]    #Get EID Res, successful, invalid - too long
+    ParseMctpFrame(Mctp_Test_Frame)
 
-    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x02, 0x00]    #Get EID Res, successful, invalid - no payload
-    #ParseMctpFrame(Mctp_Test_Frame)
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x02, 0x00]    #Get EID Res, successful, invalid - no payload
+    ParseMctpFrame(Mctp_Test_Frame)
 
-    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x02, 0x01]    #Get EID Res, unsuccessful, valid
-    #ParseMctpFrame(Mctp_Test_Frame)
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x02, 0x01]    #Get EID Res, unsuccessful, valid
+    ParseMctpFrame(Mctp_Test_Frame)
 
-    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x02, 0x01, 0x99]    #Get EID Res, unsuccessful, invalid - unexpected payload
-    #ParseMctpFrame(Mctp_Test_Frame)
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x02, 0x01, 0x99]    #Get EID Res, unsuccessful, invalid - unexpected payload
+    ParseMctpFrame(Mctp_Test_Frame)
 
 #--------------------------------------------------End 0x02--------------------------------------------------------------------------------------------------------
 
@@ -918,44 +969,32 @@ if __name__ == "__main__":
 #--------------------------------------------------End 0x05--------------------------------------------------------------------------------------------------------
 
 #--------------------------------------------------Start 0x07------------------------------------------------------------------------------------------------------
-    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x07, 0x50]    #Request, valid 
-    #ParseMctpFrame(Mctp_Test_Frame)
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x07, 0x50]    #Request, valid 
+    ParseMctpFrame(Mctp_Test_Frame)
 
-    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x07]    #Request, wrong length, missing data 
-    #ParseMctpFrame(Mctp_Test_Frame)
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x07]    #Request, wrong length, missing data 
+    ParseMctpFrame(Mctp_Test_Frame)
 
-    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x07, 0x50, 0x51]    #Request, wrong length, too long
-    #ParseMctpFrame(Mctp_Test_Frame)
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x07, 0x50, 0x51]    #Request, wrong length, too long
+    ParseMctpFrame(Mctp_Test_Frame)
 
-    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x07, 0x00, 0x50, 0x12, 0x34]    #Response, successfull ,valid
-    #ParseMctpFrame(Mctp_Test_Frame)
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x07, 0x00, 0x50, 0x12, 0x34]    #Response, successfull ,valid
+    ParseMctpFrame(Mctp_Test_Frame)
     
-    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x07, 0x00, 0x50]    #Response, successfull ,invalid - too short
-    #ParseMctpFrame(Mctp_Test_Frame)
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x07, 0x00, 0x50]    #Response, successfull ,invalid - too short
+    ParseMctpFrame(Mctp_Test_Frame)
 
-    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x07, 0x00]    #Response, successfull ,invalid - no payload
-    #ParseMctpFrame(Mctp_Test_Frame)
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x07, 0x00]    #Response, successfull ,invalid - no payload
+    ParseMctpFrame(Mctp_Test_Frame)
 
-    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x07]    #Response, successfull , no CC + no payload 
-    #ParseMctpFrame(Mctp_Test_Frame)
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x07]    #Response, successfull , no CC + no payload 
+    ParseMctpFrame(Mctp_Test_Frame)
 
-    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x07, 0x03]    #Response, unsuccessfull ,valid 
-    #ParseMctpFrame(Mctp_Test_Frame)
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x07, 0x03]    #Response, unsuccessfull ,valid 
+    ParseMctpFrame(Mctp_Test_Frame)
 
-    #Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x07, 0x03, 0x99, 0x88]    #Response, unsuccessfull ,invalid 
-    #ParseMctpFrame(Mctp_Test_Frame)
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x07, 0x03, 0x99, 0x88]    #Response, unsuccessfull ,invalid 
+    ParseMctpFrame(Mctp_Test_Frame)
 #--------------------------------------------------End 0x07------------------------------------------------------------------------------------------------------
 
 
-
-    #print(MctpTestTransportHeader)
-    #print(ParseMctpTransportHeader(MctpTestTransportHeader))
-    #print(GetMctpControlMessageCommandCode(0x00))
-    #print(GetMctpControlMessageCommandCode(0x01))
-    #print(GetMctpControlMessageCommandCode(0x02))
-    #print(GetMctpControlMessageCommandCode(0x1f))
-    #print("")
-    #print(ParseMctpTransportHeader([0x11,0x12,0x13]))
-    #print(ParseMctpTransportHeader([0xf1,0x11,0x12,0x13]))
-    #print("")
-    #print(ParseMctpControlFrame([0xf1,0x11,0x02,0x00]))

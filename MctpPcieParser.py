@@ -11,12 +11,17 @@ import MctpParser
 #Constatans
 PCIE_VDM_HEADER_LEN = 16
 
-def GetMctpPcieBdfAddress(Frame):
+def GetMctpPcieBdfAddress(Frame,FieldDesc = "PCI BDF Address"):
     Template = ""
     if len(Frame) == 2:
-        Template += "{BDF:#06x} : BDF - {Bus:#04x}:Bus/{Device:#04x}:Device/{Function:#04x}:Function"
+        Template += "{FirstByte:#04x},{SecondByte:#04x} : {FieldDesc:s}\n\r"
+        Template += "\t{Bus:#04x} : Bus,\n\r"
+        Template += "\t{Device:#04x} : Device,\n\r"
+        Template += "\t{Function:#04x} : Function."
 
-        Result = Template.format(BDF = ((Frame[0]<<8) + Frame[1]),
+        Result = Template.format(FirstByte = Frame[0],
+                                 SecondByte = Frame[1],
+                                 FieldDesc = FieldDesc,
                                  Bus = Frame[0],
                                  Device = (Frame[1] & 0xf8) >> 3,
                                  Function = Frame[1] & 0x7)
@@ -30,8 +35,9 @@ def GetMctpPcieVendorId(Frame):
     Mctp_Vendor_Id = {
     0x1ab4 : 'DMTF'}
     if len(Frame) == 2:
-        Template += "{VendorId:#06x} : ({VendorIdDesc:s})"
-        Result = Template.format(VendorId = ((Frame[0]<<8) + Frame[1]),
+        Template += "{FirstByte:#04x},{SecondByte:#04x} : {VendorIdDesc:s}"
+        Result = Template.format(FirstByte = Frame[0],
+                                 SecondByte = Frame[1],
                                  VendorIdDesc = Mctp_Vendor_Id.get((Frame[0]<<8) + Frame[1],"Vendor Unknown"))
     else:
         Result = "Error!!! Invalid Vendor ID field length."
@@ -42,7 +48,7 @@ def GetMctpMessageCode(Code):
     Mctp_Message_Code = {
     0b01111111 : 'Vendor Defined Type 1'}
 
-    Template = "{MessageCode:#04x} : ({MessageCodeDesc:s})"
+    Template = "{MessageCode:#04x} : {MessageCodeDesc:s}"
     Result = Template.format(MessageCode = Code,
                              MessageCodeDesc = Mctp_Message_Code.get(Code,"Message Code Unknown"))
     return Result
@@ -58,15 +64,19 @@ def ParseMctpPcieHeader(Header):
     Template = "PCIe Medium-Specific Header: \n\r"
     DataToDisplay = {}
 
-    Template += "{Data[RoutingType]:s} : Routing Type,\n\r"
-    Template += "{Data[PciRequesterId]:s} : PCI Requester ID,\n\r"
+    Template += "{Data[FirstByte]:#04x} : \n\r"
+    Template += "\t{Data[RoutingType]:s} : Routing Type,\n\r"
+    
+    Template += "{Data[PciRequesterId]:s}\n\r"
     Template += "{Data[MessageCode]:s} : Message Code,\n\r"
-    Template += "{Data[PciTargetId]:s} : PCI Target ID\n\r"
+    Template += "{Data[PciTargetId]:s}\n\r"
     Template += "{Data[VendorId]:s} : Vendor Id\n\r"
+
+    DataToDisplay['FirstByte'] = Header[0]
     DataToDisplay['RoutingType']= GetMctpPcieVdmRoutingType(Header[0] & 0x7)
-    DataToDisplay['PciRequesterId']= GetMctpPcieBdfAddress(Header[4:6])
+    DataToDisplay['PciRequesterId']= GetMctpPcieBdfAddress(Header[4:6],"PCI Requester ID")
     DataToDisplay['MessageCode']= GetMctpMessageCode(Header[7])
-    DataToDisplay['PciTargetId']= GetMctpPcieBdfAddress(Header[8:10])
+    DataToDisplay['PciTargetId']= GetMctpPcieBdfAddress(Header[8:10],"PCI Target ID")
     DataToDisplay['VendorId']= GetMctpPcieVendorId(Header[10:12])
     
     Result = Template.format(Data = DataToDisplay)
@@ -120,9 +130,34 @@ if __name__ == "__main__":
     #RoutingTst = 0b111
     #print(GetMctpPcieVdmRoutingType(RoutingTst))
 
-    #Mctp_Pcie_Test_Frame = [0x70, 0x00, 0x10, 0x05, 0x02, 0x00, 0x10, 0x7f, 0x00, 0x00, 0x1a, 0xb4, 0x01, 0x50, 0x22, 0xca, 0x7e, 0x80, 0x86, 0xc0, 0x11, 0x00, 0x10, 0x02, 0x00, 0x92, 0x00, 0x03, 0x01, 0xff, 0x22, 0xc8, 0x00, 0x80, 0x0b, 0x00]
-    #ParseMctpPcieFrame(Mctp_Pcie_Test_Frame)
+    Mctp_Pcie_Test_Frame = [0x70, 0x00, 0x10, 0x05, 0x02, 0x00, 0x10, 0x7f, 0x00, 0x00, 0x1a, 0xb4, 0x01, 0x50, 0x22, 0xca, 0x7e, 0x80, 0x86, 0xc0, 0x11, 0x00, 0x10, 0x02, 0x00, 0x92, 0x00, 0x03, 0x01, 0xff, 0x22, 0xc8, 0x00, 0x80, 0x0b, 0x00]
+    ParseMctpPcieFrame(Mctp_Pcie_Test_Frame)
+
+    Mctp_Pcie_Test_Frame = [0x70, 0x00, 0x10, 0x01, 0x02, 0x00, 0x10, 0x7f, 0x00, 0x00, 0x1a, 0xb4, 0x01, 0x00, 0x22, 0xcc, 0x00, 0x80, 0x02, 0x00]    
+    ParseMctpPcieFrame(Mctp_Pcie_Test_Frame)
 
     Mctp_Pcie_Test_Frame = [0x72, 0x00, 0x10, 0x02, 0x00, 0x92, 0x10, 0x7f, 0x02, 0x00, 0x1a, 0xb4, 0x01, 0x22, 0x50, 0xe4, 0x00, 0x00, 0x02, 0x00, 0x00, 0x11, 0x00, 0x00]    
     ParseMctpPcieFrame(Mctp_Pcie_Test_Frame)
+
+    Mctp_Pcie_Test_Frame = [0x72, 0x00, 0x10, 0x02, 0x00, 0x92, 0x10, 0x7F, 0x01, 0x00, 0x1A, 0xB4, 0x01, 0x50, 0x00, 0xD3, 0x00, 0x17, 0x02, 0x00, 0x00, 0x11, 0x00, 0x00]    
+    ParseMctpPcieFrame(Mctp_Pcie_Test_Frame)
+
+    Mctp_Pcie_Test_Frame = [0x72, 0x00, 0x10, 0x02, 0x00, 0x92, 0x10, 0x7F, 0x01, 0x00, 0x1A, 0xB4, 0x01, 0x50, 0x55, 0xF1, 0x00, 0x00, 0x02, 0x00, 0x00, 0x11, 0x00, 0x00]    
+    ParseMctpPcieFrame(Mctp_Pcie_Test_Frame)
+
+    Mctp_Pcie_Test_Frame = [0x73, 0x00, 0x10, 0x01, 0x00, 0x92, 0x10, 0x7f, 0x00, 0x00, 0x1a, 0xb4, 0x01, 0xff, 0x50, 0xe8, 0x00, 0x80, 0x0b, 0x00]
+    ParseMctpPcieFrame(Mctp_Pcie_Test_Frame)
+
+    Mctp_Pcie_Test_Frame = [0x72, 0x00, 0x10, 0x02, 0x01, 0x02, 0x10, 0x7F, 0x00, 0x92, 0x1A, 0xB4, 0x01, 0x51, 0x61, 0xC3, 0x00, 0x0E, 0x01, 0x00, 0x00, 0x61, 0x00, 0x00]
+    ParseMctpPcieFrame(Mctp_Pcie_Test_Frame)
+
+    Mctp_Pcie_Test_Frame = [0x72, 0x00, 0x10, 0x02, 0x00, 0x92, 0x30, 0x7F, 0x01, 0x02, 0x1A, 0xB4, 0x01, 0x00, 0x50, 0xDC, 0x00, 0x8F, 0x01, 0x00, 0x61, 0x00, 0x00, 0x00]
+    ParseMctpPcieFrame(Mctp_Pcie_Test_Frame)
+
+    Mctp_Pcie_Test_Frame = [0x72, 0x00, 0x10, 0x01, 0x00, 0x92, 0x10, 0x7F, 0x01, 0x02, 0x1A, 0xB4, 0x01, 0x00, 0x50, 0xE9, 0x00, 0x8C, 0x02, 0x00]
+    ParseMctpPcieFrame(Mctp_Pcie_Test_Frame)
+
+    Mctp_Pcie_Test_Frame = [0x72, 0x00, 0x10, 0x02, 0x01, 0x02, 0x10, 0x7F, 0x00, 0x92, 0x1A, 0xB4, 0x01, 0x50, 0x00, 0xC1, 0x00, 0x0C, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00]
+    ParseMctpPcieFrame(Mctp_Pcie_Test_Frame)
+    
     #print(Mctp_Pcie_Test_Frame)
