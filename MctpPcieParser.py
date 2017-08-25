@@ -66,6 +66,11 @@ def ParseMctpPcieHeader(Header):
 
     Template += "{Data[FirstByte]:#04x} : \n\r"
     Template += "\t{Data[RoutingType]:s} : Routing Type,\n\r"
+
+    Template += "{Data[SecondByte]:#04x} : \n\r"
+    
+    Template += "{Data[ThirdByte]:#04x},{Data[FourthByte]:#04x} : \n\r"
+    Template += "\t{Data[Length]:d} : Length of the PCIe VDM Data in Dwords.,\n\r"
     
     Template += "{Data[PciRequesterId]:s}\n\r"
     Template += "{Data[MessageCode]:s} : Message Code,\n\r"
@@ -74,6 +79,10 @@ def ParseMctpPcieHeader(Header):
 
     DataToDisplay['FirstByte'] = Header[0]
     DataToDisplay['RoutingType']= GetMctpPcieVdmRoutingType(Header[0] & 0x7)
+    DataToDisplay['SecondByte'] = Header[1]
+    DataToDisplay['ThirdByte'] = Header[2]
+    DataToDisplay['FourthByte'] = Header[2]
+    DataToDisplay['Length'] = (((Header[2] & 0x3) << 8) + Header[3])
     DataToDisplay['PciRequesterId']= GetMctpPcieBdfAddress(Header[4:6],"PCI Requester ID")
     DataToDisplay['MessageCode']= GetMctpMessageCode(Header[7])
     DataToDisplay['PciTargetId']= GetMctpPcieBdfAddress(Header[8:10],"PCI Target ID")
