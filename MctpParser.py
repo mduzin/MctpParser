@@ -700,9 +700,19 @@ def ParseMctpEndpointDiscoveryReq(Frame):
    
 def ParseMctpEndpointDiscoveryRes(Frame):
     Template = ""
-    Template += "{CompCode:#04x} : {CompCodeDesc:s},\n\r"
-    Result = Template.format(CompCode = Frame[0],
-                             CompCodeDesc = Mctp_Control_Message_Status_Codes.get(Frame[0]))
+    DataToDisplay = {}
+
+    #Completion Code
+    Template += "{Data[CompCode]:#04x} : {Data[CompCodeDesc]:s} : Completion Code\n\r"
+    DataToDisplay['CompCode']= Frame[0]
+    DataToDisplay['CompCodeDesc'] = Mctp_Control_Message_Status_Codes.get(Frame[0])
+
+    #Unexpected payload
+    if len(Frame[1:]) > 0:
+        Template += "{Data[UnexpectedData]} : Error!!! Unexpected data\n\r"
+        DataToDisplay['UnexpectedData'] = [hex(item) for item in Frame[1:]] #Unexpected data
+
+    Result = Template.format(Data = DataToDisplay) 
     return Result
 
 #0x0d : 'Discovery Notify',
@@ -1009,6 +1019,26 @@ if __name__ == "__main__":
     Mctp_Test_Frame = [0x01, 0x31, 0x32, 0xD9, 0x00, 0x07, 0x07, 0x03, 0x99, 0x88]    #Response, unsuccessfull ,invalid 
     ParseMctpFrame(Mctp_Test_Frame)
 #--------------------------------------------------End 0x07------------------------------------------------------------------------------------------------------
+    
+#--------------------------------------------------Start 0x0c------------------------------------------------------------------------------------------------------
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x0c]    #Request, valid 
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x0c, 0x99, 0x88]    #Request, invalid, unexpected data
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x0c, 0x00]    #Response, successfull ,valid
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x0c, 0x00, 0x99, 0x88]    #Response, successfull ,invalid, too long
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x0c, 0x01]    #Response, unsuccessfull ,valid
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x0c, 0x02, 0x99, 0x88]    #Response, unsuccessfull ,invalid, too long
+    ParseMctpFrame(Mctp_Test_Frame)
+#--------------------------------------------------End 0x0c------------------------------------------------------------------------------------------------------
 
 #--------------------------------------------------Start 0x0d------------------------------------------------------------------------------------------------------
     Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x0d]    #Request, valid 
