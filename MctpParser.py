@@ -678,14 +678,19 @@ def ParseMctpPrepareForEndpointDiscoveryReq(Frame):
    
 def ParseMctpPrepareForEndpointDiscoveryRes(Frame):
     Template = ""
-    if len(Frame) == 1:
-        Template += "{CompCode:#04x} : {CompCodeDesc:s},\n\r"
-       
-        Result = Template.format(CompCode = Frame[0],
-                                 CompCodeDesc = Mctp_Control_Message_Status_Codes.get(Frame[0]))
-       
-    else:
-        Result = Template + "Error Invalid length"
+    DataToDisplay = {}
+
+    #Completion Code
+    Template += "{Data[CompCode]:#04x} : {Data[CompCodeDesc]:s} : Completion Code\n\r"
+    DataToDisplay['CompCode']= Frame[0]
+    DataToDisplay['CompCodeDesc'] = Mctp_Control_Message_Status_Codes.get(Frame[0])
+
+    #Unexpected payload
+    if len(Frame[1:]) > 0:
+        Template += "{Data[UnexpectedData]} : Error!!! Unexpected data\n\r"
+        DataToDisplay['UnexpectedData'] = [hex(item) for item in Frame[1:]] #Unexpected data
+
+    Result = Template.format(Data = DataToDisplay) 
     return Result
    
 #0x0c : 'Endpoint Discovery',
@@ -767,8 +772,8 @@ Mctp_Control_Message_Handlers = {
     0x08 : {'Req' : None, 'Res': None},
     0x09 : {'Req' : None, 'Res': None},
     0x0a : {'Req' : ParseMctpGetRoutingTableReq, 'Res': ParseMctpGetRoutingTableRes}, #Done
-    0x0b : {'Req' : ParseMctpPrepareForEndpointDiscoveryReq, 'Res': ParseMctpPrepareForEndpointDiscoveryRes}, #Done
-    0x0c : {'Req' : ParseMctpEndpointDiscoveryReq, 'Res': ParseMctpEndpointDiscoveryRes}, #Done
+    0x0b : {'Req' : ParseMctpPrepareForEndpointDiscoveryReq, 'Res': ParseMctpPrepareForEndpointDiscoveryRes}, #Done + Fixed + Unified
+    0x0c : {'Req' : ParseMctpEndpointDiscoveryReq, 'Res': ParseMctpEndpointDiscoveryRes}, #Done + Fixed + Unified
     0x0d : {'Req' : ParseMctpDiscoveryNotifyReq, 'Res': ParseMctpDiscoveryNotifyRes}, #Done + Fixed + Unified
     0x0e : {'Req' : ParseMctpGetNetworkIdReq, 'Res': ParseMctpGetNetworkIdRes},
     0x0f : {'Req' : None, 'Res': None}
