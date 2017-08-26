@@ -522,12 +522,20 @@ def ParseMctpResolveEndpointIdRes(Frame):
 #0x0a : 'Get Routing Table Entries',
 def ParseMctpGetRoutingTableReq(Frame):
     Template = ""
+    DataToDisplay = {}
+
     if len(Frame) == 1:
-        Template += "{EntryHandle:#04x} : Entry Handle\n\r"
+        Template += "{Data[EntryHandle]:#04x} : Entry Handle\n\r"
+        DataToDisplay['EntryHandle'] = Frame[0])
        
-        Result = Template.format(EntryHandle = Frame[0])
-    else:
-       Result = Template + "Error!!! Invalid length"
+    elif len(Frame) > 1:
+       Template += "{Data[UnexpectedData]} : Error!!! Unexpected data\n\r"
+       DataToDisplay['UnexpectedData'] = ([hex(item) for item in Frame[1:]])  #Unexpected data
+       
+    else :
+       Template += "Error!!! Missing data"
+
+    Result = Template.format(Data = DataToDisplay)
     return Result
 
 
@@ -767,7 +775,7 @@ Mctp_Control_Message_Handlers = {
     0x03 : {'Req' : ParseMctpGetEndpointUuidReq, 'Res': ParseMctpGetEndpointUuidRes},
     0x04 : {'Req' : ParseMctpGetMctpVersionSupportReq, 'Res': ParseMctpGetMctpVersionSupportRes},
     0x05 : {'Req' : ParseMctpGetMessageTypeSupportReq, 'Res': ParseMctpGetMessageTypeSupportRes}, #Done + Fixed + Unified
-    0x06 : {'Req' : ParseMctpGetVendorDefinedMessageSupportReq, 'Res': ParseMctpGetVendorDefinedMessageSupportRes}, #Done + 1 TODO
+    0x06 : {'Req' : ParseMctpGetVendorDefinedMessageSupportReq, 'Res': ParseMctpGetVendorDefinedMessageSupportRes}, #Done
     0x07 : {'Req' : ParseMctpResolveEndpointIdReq, 'Res': ParseMctpResolveEndpointIdRes}, #Done + Fixed + Unified
     0x08 : {'Req' : None, 'Res': None},
     0x09 : {'Req' : None, 'Res': None},
