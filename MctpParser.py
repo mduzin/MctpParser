@@ -717,11 +717,20 @@ def ParseMctpDiscoveryNotifyReq(Frame):
    
 def ParseMctpDiscoveryNotifyRes(Frame):
     Template = ""
-    Template += "{CompCode:#04x} : {CompCodeDesc:s},\n\r"
-    Result = Template.format(CompCode = Frame[0],
-                             CompCodeDesc = Mctp_Control_Message_Status_Codes.get(Frame[0]))
-    return Result
+    DataToDisplay = {}
 
+    #Completion Code
+    Template += "{Data[CompCode]:#04x} : {Data[CompCodeDesc]:s} : Completion Code\n\r"
+    DataToDisplay['CompCode']= Frame[0]
+    DataToDisplay['CompCodeDesc'] = Mctp_Control_Message_Status_Codes.get(Frame[0])
+
+    #Unexpected payload
+    if len(Frame[1:]) > 0:
+        Template += "{Data[UnexpectedData]} : Error!!! Unexpected data\n\r"
+        DataToDisplay['UnexpectedData'] = [hex(item) for item in Frame[1:]] #Unexpected data
+
+    Result = Template.format(Data = DataToDisplay) 
+    return Result
 
 #0x0e : 'Get Network ID',
 def ParseMctpGetNetworkIdReq(Frame):
@@ -738,19 +747,19 @@ def ParseMctpGetNetworkIdRes(Frame):
 
 Mctp_Control_Message_Handlers = {
     0x00 : {'Req' : None, 'Res': None}, #Reserved
-    0x01 : {'Req' : ParseMctpSetEndpointEidReq, 'Res': ParseMctpSetEndpointEidRes}, #Done + Fixed
-    0x02 : {'Req' : ParseMctpGetEndpointEidReq, 'Res': ParseMctpGetEndpointEidRes}, #Done + Fixed
+    0x01 : {'Req' : ParseMctpSetEndpointEidReq, 'Res': ParseMctpSetEndpointEidRes}, #Done + Fixed + Unified
+    0x02 : {'Req' : ParseMctpGetEndpointEidReq, 'Res': ParseMctpGetEndpointEidRes}, #Done + Fixed + Unified
     0x03 : {'Req' : ParseMctpGetEndpointUuidReq, 'Res': ParseMctpGetEndpointUuidRes},
     0x04 : {'Req' : ParseMctpGetMctpVersionSupportReq, 'Res': ParseMctpGetMctpVersionSupportRes},
-    0x05 : {'Req' : ParseMctpGetMessageTypeSupportReq, 'Res': ParseMctpGetMessageTypeSupportRes}, #Done + Fixed
+    0x05 : {'Req' : ParseMctpGetMessageTypeSupportReq, 'Res': ParseMctpGetMessageTypeSupportRes}, #Done + Fixed + Unified
     0x06 : {'Req' : ParseMctpGetVendorDefinedMessageSupportReq, 'Res': ParseMctpGetVendorDefinedMessageSupportRes}, #Done + 1 TODO
-    0x07 : {'Req' : ParseMctpResolveEndpointIdReq, 'Res': ParseMctpResolveEndpointIdRes}, #Done + Fixed
+    0x07 : {'Req' : ParseMctpResolveEndpointIdReq, 'Res': ParseMctpResolveEndpointIdRes}, #Done + Fixed + Unified
     0x08 : {'Req' : None, 'Res': None},
     0x09 : {'Req' : None, 'Res': None},
     0x0a : {'Req' : ParseMctpGetRoutingTableReq, 'Res': ParseMctpGetRoutingTableRes}, #Done
     0x0b : {'Req' : ParseMctpPrepareForEndpointDiscoveryReq, 'Res': ParseMctpPrepareForEndpointDiscoveryRes}, #Done
     0x0c : {'Req' : ParseMctpEndpointDiscoveryReq, 'Res': ParseMctpEndpointDiscoveryRes}, #Done
-    0x0d : {'Req' : ParseMctpDiscoveryNotifyReq, 'Res': ParseMctpDiscoveryNotifyRes}, #Done
+    0x0d : {'Req' : ParseMctpDiscoveryNotifyReq, 'Res': ParseMctpDiscoveryNotifyRes}, #Done + Fixed + Unified
     0x0e : {'Req' : ParseMctpGetNetworkIdReq, 'Res': ParseMctpGetNetworkIdRes},
     0x0f : {'Req' : None, 'Res': None}
     }
@@ -1001,4 +1010,23 @@ if __name__ == "__main__":
     ParseMctpFrame(Mctp_Test_Frame)
 #--------------------------------------------------End 0x07------------------------------------------------------------------------------------------------------
 
+#--------------------------------------------------Start 0x0d------------------------------------------------------------------------------------------------------
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x0d]    #Request, valid 
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x0d, 0x99, 0x88]    #Request, invalid, unexpected data
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x0d, 0x00]    #Response, successfull ,valid
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x0d, 0x00, 0x99, 0x88]    #Response, successfull ,invalid, too long
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x0d, 0x01]    #Response, unsuccessfull ,valid
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x0d, 0x02, 0x99, 0x88]    #Response, unsuccessfull ,invalid, too long
+    ParseMctpFrame(Mctp_Test_Frame)
+#--------------------------------------------------End 0x0d------------------------------------------------------------------------------------------------------
 
