@@ -526,7 +526,7 @@ def ParseMctpGetRoutingTableReq(Frame):
 
     if len(Frame) == 1:
         Template += "{Data[EntryHandle]:#04x} : Entry Handle\n\r"
-        DataToDisplay['EntryHandle'] = Frame[0])
+        DataToDisplay['EntryHandle'] = Frame[0]
        
     elif len(Frame) > 1:
        Template += "{Data[UnexpectedData]} : Error!!! Unexpected data\n\r"
@@ -548,10 +548,10 @@ def GetEntryLength(Frame):
 
 def ParsePciePhysicalAddress(Address):
     Template = ""
-    Template += str(["{Item:#04x}".format(Item = ii) for ii in Address]) + " : PCIe Address = "
-    Template += "{Bus:02x}:Bus, "
-    Template += "{Dev:02x}:Device, "
-    Template += "{Func:02x}:Function\n\r"
+    Template += str(["{Item:#04x}".format(Item = ii) for ii in Address]) + " : PCIe Address"
+    Template += "\t{Bus:#04x} : Bus, \n\r"
+    Template += "\t{Dev:#04x} : Device, \n\r"
+    Template += "\t{Func:#04x} : Function.\n\r"
 
     Result = Template.format(Bus = Address[0],
                              Dev = (Address[1]& 0xc0) >> 3,
@@ -576,6 +576,9 @@ def ParsePhysicalAddress(TransportBinding,Address):
         return "Error!!! Unknown physical address parser"
 
 def ParseGetRoutingEntry(Entry):
+    Template = ""
+    DataToDisplay = {}
+    
     Mctp_Entry_Type = {
         0b00 : 'Single Endpoint that does not operate as an MCTP bridge',
         0b01 : 'EID range for a bridge where the starting EID is the EID of the bridge...',
@@ -588,44 +591,51 @@ def ParseGetRoutingEntry(Entry):
         }
    
     Template = ""
-    Template += "{SizeEidRange:#04x} : Size of EID range associated with this entry\n\r"
-    Template += "{StartingEid:#04x} : Starting EID\n\r"
-    Template += "{Byte3:#04x} : Entry Type/Port Number:\n\r"
-    Template += "\t{EntryType:#02b} : {EntryTypeDesc:s}\n\r"
-    Template += "\t{DynStatEntry:#01b} : {DynStatEntryDesc:s}\n\r"
-    Template += "\t{PortNumber:#04x} : Port Number\n\r"
-    Template += "{PhyTransBinding:#04x} : Physical Transport Binding - {PhyTransBindingDesc:s}\n\r"
-    Template += "{PhyMediaId:#04x} : Physical Medium - {PhyMediaIdDesc:s}\n\r"
-    Template += "{PhyAddrSize:#04x} : Physical Address Size\n\r"
+    Template += "{Data[SizeEidRange]:#04x} : Size of EID range associated with this entry\n\r"
+    Template += "{Data[StartingEid]:#04x} : Starting EID\n\r"
+    Template += "{Data[Byte3]:#04x} : Entry Type/Port Number:\n\r"
+    Template += "\t{Data[EntryType]:#02b} : {EntryTypeDesc:s} : Entry Type,\n\r"
+    Template += "\t{Data[DynStatEntry]:#01b} : {DynStatEntryDesc:s} : Dynamic/Static Entry,\n\r"
+    Template += "\t{Data[PortNumber]:#04x} : Port Number.\n\r"
+    Template += "{Data[PhyTransBinding]:#04x} : {Data[PhyTransBindingDesc]:s} : Physical Transport Binding\n\r"
+    Template += "{Data[PhyMediaId]:#04x} : {Data[PhyMediaIdDesc]:s} : Physical Medium - \n\r"
+    Template += "{Data[PhyAddrSize]:#04x} : Physical Address Size\n\r"
     Template += ParsePhysicalAddress(Entry[3],Entry[6:])
 
-    Result = Template.format(SizeEidRange = Entry[0],
-                             StartingEid = Entry[1],
-                             Byte3 = Entry[2],
-                             EntryType = (Entry[2] & 0xc0) >> 6,
-                             EntryTypeDesc = Mctp_Entry_Type.get((Entry[2] & 0xc0) >> 6, 'Error!!! Unknown Entry Type'),
-                             DynStatEntry = (Entry[2] & 0x20) >> 5,
-                             DynStatEntryDesc = Mctp_DynStat_Entry.get((Entry[2] & 0x20) >> 5,'Error!!! Unknown Dynamic or Static Type'),
-                             PortNumber = (Entry[2] & 0x1f),
-                             PhyTransBinding = Entry[3],
-                             PhyTransBindingDesc = Mctp_Physical_Transport_Bindings.get(Entry[3],'Reserved'),
-                             PhyMediaId =  Entry[4],
-                             PhyMediaIdDesc = Mctp_Physical_Medium_Identifiers.get(Entry[4],'Reserved'),
-                             PhyAddrSize = Entry[5])
+    DataToDisplay['SizeEidRange'] = Entry[0]
+    DataToDisplay['StartingEid'] = Entry[1]
+    DataToDisplay['Byte3'] = Entry[2]
+    DataToDisplay['EntryType'] = (Entry[2] & 0xc0) >> 6
+    DataToDisplay['EntryTypeDesc'] = Mctp_Entry_Type.get((Entry[2] & 0xc0) >> 6, 'Error!!! Unknown Entry Type')
+    DataToDisplay['DynStatEntry'] = (Entry[2] & 0x20) >> 5
+    DataToDisplay['DynStatEntryDesc'] = Mctp_DynStat_Entry.get((Entry[2] & 0x20) >> 5,'Error!!! Unknown Dynamic or Static Type')
+    DataToDisplay['PortNumber'] = (Entry[2] & 0x1f)
+    DataToDisplay['PhyTransBinding'] = Entry[3]
+    DataToDisplay['PhyTransBindingDesc'] = Mctp_Physical_Transport_Bindings.get(Entry[3],'Reserved')
+    DataToDisplay['PhyMediaId'] = Entry[4]
+    DataToDisplay['PhyMediaIdDesc'] = Mctp_Physical_Medium_Identifiers.get(Entry[4],'Reserved')
+    DataToDisplay['PhyAddrSize'] = Entry[5]
+    
+    Result = Template.format(Data = DataToDisplay)
     return Result
    
 def ParseMctpGetRoutingTableRes(Frame):
     Template = ""
-    DataToDisplay = []
+    DataToDisplay = {}
 
     Mctp_Entry_Handle= {
         0xff : 'No more entries'}
    
     Mctp_Frame_Length = len(Frame)
     Mctp_Frame_Expected_Length = 0
+
+    #Completion Code
+    Template += "{Data[CompCode]:#04x} : {Data[CompCodeDesc]:s} : Completion Code \n\r"
+    DataToDisplay['CompCode']= Frame[0]
+    DataToDisplay['CompCodeDesc'] = Mctp_Control_Message_Status_Codes.get(Frame[0])
    
     #The Frame with SUCCESS CC shall have at minimum 3 bytes (3 common data bytes)
-    if Frame[0]== SUCCESS:
+    if SUCCESS == Frame[0]:
         if Mctp_Frame_Length >= 3:
             Mctp_Frame_Expected_Length = 3
             Mctp_Entries_Count = Frame[2]
@@ -644,31 +654,33 @@ def ParseMctpGetRoutingTableRes(Frame):
     
             if Mctp_Frame_Length == Mctp_Frame_Expected_Length:
 
-                Template += "{Data[0]:#04x} : {Data[1]:s},\n\r"
-                Template += "{Data[2]:#04x} : {Data[3]:s},\n\r"
-                Template += "{Data[4]:#04x} : Entries Count in this response,\n\r"
+                Template += "{Data[NextEntry]:#04x} : {Data[NextEntryDesc]:s} : Next Entry Handle\n\r"
+                Template += "{Data[EntriesCount]:#04x} : Entries Count in this response\n\r"
                 
-                DataToDisplay.append(Frame[0]) #Completion Code
-                DataToDisplay.append(Mctp_Control_Message_Status_Codes.get(Frame[0])) #Completion Code Description
-                DataToDisplay.append(Frame[1]) #Next Entry Handle
-                DataToDisplay.append(Mctp_Entry_Handle.get(Frame[1],'Next Entry Handle')) #Next Entry Handle Description
-                DataToDisplay.append(Frame[2]) #Entries Count
+                DataToDisplay['NextEntry'] = Frame[1] #Next Entry Handle
+                DataToDisplay['NextEntryDesc'] = Mctp_Entry_Handle.get(Frame[1],'Next Entry Handle') #Next Entry Handle Description
+                DataToDisplay['EntriesCount']= Frame[2] #Entries Count
                 
                 for Entry in GetRoutingTableEntries:
                     Template += ParseGetRoutingEntry(Entry)
-       
+
+            else:
+                # print faulty data
+                Template += "{Data[UnexpectedData]} : Error!!! Frame length different than expected\n\r"
+                DataToDisplay['UnexpectedData'] = ([hex(item) for item in Frame[1:]])  #Unexpected data
+                
         else:
-            Template += "Error!!! Frame length different than expected"
+            # missing data
+            Template += "{Data[UnexpectedData]} : Error!!! Missing data\n\r"
+            DataToDisplay['UnexpectedData'] = ([hex(item) for item in Frame[1:]])  #Unexpected data
+
 
     #The Frame with other CC shall have at minimum 1 byte
-    else: 
-        if Mctp_Frame_Length == 1:
-            Template += "{Data[0]:#04x} : {Data[1]:s},\n\r"
-            DataToDisplay.append(Frame[0]) #Completion Code
-            DataToDisplay.append(Mctp_Control_Message_Status_Codes.get(Frame[0])) #Completion Code Description
-                                 
-        else:
-            Template += "Error!!! Frame length different than expected"  
+    else:
+        if Mctp_Frame_Length > 1:
+            #Unexpected data
+            Template += "{Data[UnexpectedData]} : Error!!! Unexpected data\n\r"
+            DataToDisplay['UnexpectedData'] = ([hex(item) for item in Frame[1:]])  #Unexpected data                                 
    
     Result = Template.format(Data = DataToDisplay) 
     return Result
@@ -1032,6 +1044,26 @@ if __name__ == "__main__":
     Mctp_Test_Frame = [0x01, 0x31, 0x32, 0xD9, 0x00, 0x07, 0x07, 0x03, 0x99, 0x88]    #Response, unsuccessfull ,invalid 
     ParseMctpFrame(Mctp_Test_Frame)
 #--------------------------------------------------End 0x07------------------------------------------------------------------------------------------------------
+
+#--------------------------------------------------Start 0x0b------------------------------------------------------------------------------------------------------
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x0b]    #Request, valid 
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x0b, 0x99, 0x88]    #Request, invalid, unexpected data
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x0b, 0x00]    #Response, successfull ,valid
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x0b, 0x00, 0x99, 0x88]    #Response, successfull ,invalid, too long
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x0b, 0x01]    #Response, unsuccessfull ,valid
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x0b, 0x02, 0x99, 0x88]    #Response, unsuccessfull ,invalid, too long
+    ParseMctpFrame(Mctp_Test_Frame)
+#--------------------------------------------------End 0x0b------------------------------------------------------------------------------------------------------
     
 #--------------------------------------------------Start 0x0c------------------------------------------------------------------------------------------------------
     Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x0c]    #Request, valid 
@@ -1053,7 +1085,7 @@ if __name__ == "__main__":
     ParseMctpFrame(Mctp_Test_Frame)
 #--------------------------------------------------End 0x0c------------------------------------------------------------------------------------------------------
 
-#--------------------------------------------------Start 0x0d------------------------------------------------------------------------------------------------------
+#--------------------------------------------------Start 0x0d----------------------------------------------------------------------------------------------------
     Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x0d]    #Request, valid 
     ParseMctpFrame(Mctp_Test_Frame)
 
@@ -1073,3 +1105,20 @@ if __name__ == "__main__":
     ParseMctpFrame(Mctp_Test_Frame)
 #--------------------------------------------------End 0x0d------------------------------------------------------------------------------------------------------
 
+#--------------------------------------------------Start 0x0a----------------------------------------------------------------------------------------------------
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x0a, 0x02]    #Request, valid 
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x0a, 0x02, 0x99, 0x88]    #Request, invalid, too long
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x0a]    #Request, invalid, too short
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x0a, 0x02]    #Response, unsuccessfull ,valid
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x0a, 0x02, 0x99, 0x88]    #Response, unsuccessfull ,invalid, too long
+    ParseMctpFrame(Mctp_Test_Frame)
+
+#--------------------------------------------------End 0x0a------------------------------------------------------------------------------------------------------
