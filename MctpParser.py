@@ -416,7 +416,7 @@ def ParseMctpGetVendorDefinedMessageSupportReq(Frame):
     DataToDisplay = {}
 
     if len(Frame) == 1:
-        Template += "{VendorIdSel:#04x} : Vendor ID Set Selector\n\r"
+        Template += "{Data[VendorIdSel]:#04x} : Vendor ID Set Selector\n\r"
         DataToDisplay['VendorIdSel'] = Frame[0]
        
     elif len(Frame) > 1:
@@ -432,6 +432,7 @@ def ParseMctpGetVendorDefinedMessageSupportReq(Frame):
 
 def ParseMctpGetVendorDefinedMessageSupportRes(Frame):
     Template = ""
+    DataToDisplay = {}
 
     Mctp_Vendor_Id_Sel= {
         0xff : 'No more capability sets'}
@@ -441,28 +442,59 @@ def ParseMctpGetVendorDefinedMessageSupportRes(Frame):
         0x01 : {"Name" : "IANA Enterprise Number", "Length" : 4}
         }
 
-    #<TODO>: calculate frame length
-    if len(Frame) > 5:
-             
-        Template += "{CompCode:#04x} : {CompCodeDesc:s},\n\r"
-        Template += "{VendorIdSel:#04x} : {VendorIdSelDesc:s}\n\r"
-        Template += "{VendorIdFormat:#04x} : {VendorIdFormatDesc:s}\n\r"
-        Template += str(["{Item:#04x}".format(Item = ii) for ii in Frame[3:-2]]) + " : Vendor ID\n\r"
-        Template += "{CmdSetType1:#04x} {CmdSetType2:#04x} : Command Set Type\n\r"
-     
-        Result = Template.format(CompCode = Frame[0],
-                                 CompCodeDesc = Mctp_Control_Message_Status_Codes.get(Frame[0]),
-                                 VendorIdSel = Frame[1],
-                                 VendorIdSelDesc = Mctp_Vendor_Id_Sel.get(Frame[1],'Vendor ID Set Selector'),
-                                 VendorIdFormat = Frame[2],
-                                 VendorIdFormatDesc = (Mctp_Vendor_Id_Format.get(Frame[2],'Error!!! Unknown Vendor ID Format')).get("Name"),
-                                 CmdSetType1 = Frame[-2],
-                                 CmdSetType2 = Frame[-1])
-                                
+    #Completion Code
+    Template += "{Data[CompCode]:#04x} : {Data[CompCodeDesc]:s} : Completion Code\n\r"
+    DataToDisplay['CompCode']= Frame[0]
+    DataToDisplay['CompCodeDesc'] = Mctp_Control_Message_Status_Codes.get(Frame[0])
 
-    else:
-        Result = Template + "Error Invalid length\n\r"   
+    #Successful respone 
+    if SUCCESS == Frame[0]:
+        #calculate frame expected length
+        Mctp_Frame_Length = len(Frame)
+
+        #paylod should have at least 4 bytes (CC, VendorIdSel, VendorIdFormat, VendorId 1st byte)
+        if Mctp_Frame_Length >= 4:
+            Mctp_Frame_Expected_Length = 5 + Mctp_Vendor_Id_Format.get(Frame[2],{"Length":0}).get("Length")
+
+            if Mctp_Frame_Expected_Length == Mctp_Frame_Length:
+                print('Jestem')
+                Template += "{Data[VendorIdSel]:#04x} : {Data[VendorIdSelDesc]:s} : Vendor ID Set Selector\n\r"
+                Template += "{Data[VendorIdFormat]:#04x} : {Data[VendorIdFormatDesc]:s} : Vendor Id Format\n\r"
+                Template += "{Data[VendorId]} : Vendor ID \n\r"
+                Template += "{Data[CmdSetType1]:#04x} {Data[CmdSetType2]:#04x} : Command Set Type\n\r"
+
+                DataToDisplay['VendorIdSel'] = Frame[1]
+                DataToDisplay['VendorIdSelDesc'] =  Mctp_Vendor_Id_Sel.get(Frame[1],'Vendor ID Set Selector')
+                DataToDisplay['VendorIdFormat'] = Frame[2]
+                DataToDisplay['VendorIdFormatDesc'] = (Mctp_Vendor_Id_Format.get(Frame[2],'Error!!! Unknown Vendor ID Format')).get("Name")
+                DataToDisplay['VendorId'] = [hex(item) for item in Frame[3:-2]]
+                DataToDisplay['CmdSetType1'] = Frame[-2]
+                DataToDisplay['CmdSetType2'] = Frame[-1]
+                
+            else:
+                # print faulty data
+                Template += "{Data[UnexpectedData]} : Error!!! Frame length different than expected\n\r"
+                DataToDisplay['UnexpectedData'] = ([hex(item) for item in Frame[1:]])  #Unexpected data
+            
+        else:
+            # missing data
+            Template += "{Data[MissingData]} : Error!!! Missing data\n\r"
+            DataToDisplay['MissingData'] = ([hex(item) for item in Frame[1:]])  #Unexpected data
+        
+    #Unsuccesful respone "SUCCESS != Frame[0]:"
+    else:  
+        #...with unexpected payload
+        if len(Frame[1:]) > 0:
+            Template += "{Data[UnexpectedData]} : Error!!! Unexpected data\n\r"
+
+            DataToDisplay['UnexpectedData'] = ([hex(item) for item in Frame[1:]])  #Unexpected data
+   
+            
+    Result = Template.format(Data = DataToDisplay) 
     return Result
+      
+
+   
 
 #0x07 : 'Resolve Endpoint ID',
 def ParseMctpResolveEndpointIdReq(Frame):
@@ -797,7 +829,7 @@ Mctp_Control_Message_Handlers = {
     0x03 : {'Req' : ParseMctpGetEndpointUuidReq, 'Res': ParseMctpGetEndpointUuidRes},
     0x04 : {'Req' : ParseMctpGetMctpVersionSupportReq, 'Res': ParseMctpGetMctpVersionSupportRes},
     0x05 : {'Req' : ParseMctpGetMessageTypeSupportReq, 'Res': ParseMctpGetMessageTypeSupportRes}, #Done + Fixed + Unified
-    0x06 : {'Req' : ParseMctpGetVendorDefinedMessageSupportReq, 'Res': ParseMctpGetVendorDefinedMessageSupportRes}, #Done
+    0x06 : {'Req' : ParseMctpGetVendorDefinedMessageSupportReq, 'Res': ParseMctpGetVendorDefinedMessageSupportRes}, #Done + Fixed + Unified
     0x07 : {'Req' : ParseMctpResolveEndpointIdReq, 'Res': ParseMctpResolveEndpointIdRes}, #Done + Fixed + Unified
     0x08 : {'Req' : None, 'Res': None},
     0x09 : {'Req' : None, 'Res': None},
@@ -1159,3 +1191,38 @@ if __name__ == "__main__":
     ParseMctpFrame(Mctp_Test_Frame)
 
 #--------------------------------------------------End 0x0a------------------------------------------------------------------------------------------------------
+
+#--------------------------------------------------Start 0x06----------------------------------------------------------------------------------------------------
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x06, 0x02]    #Request, valid 
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x06, 0x02, 0x99, 0x88]    #Request, invalid, too long
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x06]    #Request, invalid, too short
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x06, 0x02]    #Response, unsuccessfull ,valid
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x06, 0x02, 0x99, 0x88]    #Response, unsuccessfull ,invalid, too long
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x06, 0x00]    #Response, successfull ,invalid, too short
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x06, 0x00, 0x99]    #Response, successfull ,invalid, too short
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x06, 0x00, 0xff, 0x02, 0x99]    #Response, successfull ,invalid, unknown vendor format
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x06, 0x00, 0xff, 0x00, 0x80, 0x86, 0x00, 0x01]    #Response, successfull ,valid
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x06, 0x00, 0xff, 0x00, 0x80, 0x86, 0x00, 0x01, 0x99]    #Response, successfull ,invalid, too long
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x06, 0x00, 0xff, 0x00, 0x80, 0x86, 0x00]    #Response, successfull ,invalid, too short
+    ParseMctpFrame(Mctp_Test_Frame)
+#--------------------------------------------------End 0x07------------------------------------------------------------------------------------------------------
