@@ -540,15 +540,17 @@ def ParseMctpGetRoutingTableReq(Frame):
 
 
 def GetEntryLength(Frame):
+    #Each entry contains 6 bytes of common data + medium-specific physical address,
+    #medium-specific physical address length is in byte 6th byte 
     try:
         EntryLength =  6 + Frame[5]
         return EntryLength
     except:
         return 0
-
+    
 def ParsePciePhysicalAddress(Address):
     Template = ""
-    Template += str(["{Item:#04x}".format(Item = ii) for ii in Address]) + " : PCIe Address"
+    Template += str(["{Item:#04x}".format(Item = ii) for ii in Address]) + " : PCIe Address \n\r"
     Template += "\t{Bus:#04x} : Bus, \n\r"
     Template += "\t{Dev:#04x} : Device, \n\r"
     Template += "\t{Func:#04x} : Function.\n\r"
@@ -594,11 +596,11 @@ def ParseGetRoutingEntry(Entry):
     Template += "{Data[SizeEidRange]:#04x} : Size of EID range associated with this entry\n\r"
     Template += "{Data[StartingEid]:#04x} : Starting EID\n\r"
     Template += "{Data[Byte3]:#04x} : Entry Type/Port Number:\n\r"
-    Template += "\t{Data[EntryType]:#02b} : {EntryTypeDesc:s} : Entry Type,\n\r"
-    Template += "\t{Data[DynStatEntry]:#01b} : {DynStatEntryDesc:s} : Dynamic/Static Entry,\n\r"
+    Template += "\t{Data[EntryType]:#02b} : {Data[EntryTypeDesc]:s} : Entry Type,\n\r"
+    Template += "\t{Data[DynStatEntry]:#01b} : {Data[DynStatEntryDesc]:s} : Dynamic/Static Entry,\n\r"
     Template += "\t{Data[PortNumber]:#04x} : Port Number.\n\r"
     Template += "{Data[PhyTransBinding]:#04x} : {Data[PhyTransBindingDesc]:s} : Physical Transport Binding\n\r"
-    Template += "{Data[PhyMediaId]:#04x} : {Data[PhyMediaIdDesc]:s} : Physical Medium - \n\r"
+    Template += "{Data[PhyMediaId]:#04x} : {Data[PhyMediaIdDesc]:s} : Physical Medium \n\r"
     Template += "{Data[PhyAddrSize]:#04x} : Physical Address Size\n\r"
     Template += ParsePhysicalAddress(Entry[3],Entry[6:])
 
@@ -1119,6 +1121,33 @@ if __name__ == "__main__":
     ParseMctpFrame(Mctp_Test_Frame)
 
     Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x0a, 0x02, 0x99, 0x88]    #Response, unsuccessfull ,invalid, too long
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x0a, 0x00]    #Response, successfull ,invalid, too short
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x0a, 0x00, 0xff, 0x01, 0x01, 0x50,0x20, 0x02, 0x0a, 0x02, 0x00, 0x92]    #Response, successfull ,valid
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x0a, 0x00, 0xff, 0x02, 0x01, 0x50,0x20, 0x02, 0x0a, 0x02, 0x00, 0x92, 0x01, 0x51,0x20, 0x02, 0x0a, 0x02, 0x00, 0x93]    #Response, successfull ,valid
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x0a, 0x00, 0xff, 0x01, 0x01, 0x50,0x20, 0x02, 0x0a, 0x02, 0x00, 0x92, 0x01, 0x51,0x20, 0x02, 0x0a, 0x02, 0x00, 0x93]    #Response, successfull ,invalid, longer than expected
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x0a, 0x00, 0xff, 0x02, 0x01, 0x50,0x20, 0x02, 0x0a, 0x02, 0x00, 0x92, 0x01, 0x51, 0x02, 0x0a, 0x02, 0x00, 0x93]    #Response, successfull ,invalid, shorter than expected
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x0a, 0x00]    #Response, successfull ,invalid, missing payload
+    ParseMctpFrame(Mctp_Test_Frame)
+    
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x0a, 0x00, 0x99]    #Response, successfull ,invalid, payload to short
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x0a, 0x00, 0x99, 0x88, 0x77]    #Response, successfull ,invalid, payload to short
+    ParseMctpFrame(Mctp_Test_Frame)
+
+    Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x0a, 0x00, 0x99, 0x88, 0x77, 0x66]    #Response, successfull ,invalid, payload to short
     ParseMctpFrame(Mctp_Test_Frame)
 
 #--------------------------------------------------End 0x0a------------------------------------------------------------------------------------------------------
