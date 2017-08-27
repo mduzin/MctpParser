@@ -413,14 +413,22 @@ def ParseMctpGetMessageTypeSupportRes(Frame):
 #0x06 : 'Get Vendor Defined Message Support',
 def ParseMctpGetVendorDefinedMessageSupportReq(Frame):
     Template = ""
+    DataToDisplay = {}
 
     if len(Frame) == 1:
         Template += "{VendorIdSel:#04x} : Vendor ID Set Selector\n\r"
+        DataToDisplay['VendorIdSel'] = Frame[0]
        
-        Result = Template.format(VendorIdSel = Frame[0])
-    else:
-       Result = Template + "Error!!! Invalid length"
+    elif len(Frame) > 1:
+       Template += "{Data[UnexpectedData]} : Error!!! Unexpected data\n\r"
+       DataToDisplay['UnexpectedData'] = ([hex(item) for item in Frame[1:]])  #Unexpected data
+       
+    else :
+       Template += "Error!!! Missing data"
+
+    Result = Template.format(Data = DataToDisplay)
     return Result
+
 
 def ParseMctpGetVendorDefinedMessageSupportRes(Frame):
     Template = ""
