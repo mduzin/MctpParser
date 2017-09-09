@@ -176,7 +176,7 @@ def ParseMctpSetEndpointEidRes(Frame):
             Template += "\t{Data[rsvd1]:#04b} : Reserved, \n\r"
             Template += "\t{Data[EidAssignStatus]:#04b} : {Data[EidAssignDesc]:s} : EID Assignment status,\n\r"
             Template += "\t{Data[rsvd2]:#04b} : Reserved,\n\r"
-            Template += "\t{Data[EidAllocStatus]:#04b}={Data[EidAllocDesc]:s} : EID allocation status.\n\r"
+            Template += "\t{Data[EidAllocStatus]:#04b} : {Data[EidAllocDesc]:s} : EID allocation status.\n\r"
             Template += "{Data[EidSetting]:#04x} : EID Setting,\n\r"
             Template += "{Data[EidPoolSize]:#04x} : EID Pool Size,\n\r"
       
@@ -253,7 +253,7 @@ def ParseMctpGetEndpointEidRes(Frame):
             Template += "\t{Data[rsvd1]:#04b} : Reserved,\n\r"
             Template += "\t{Data[EndType]:#04b} : {Data[EndTypeDesc]:s},\n\r"
             Template += "\t{Data[rsvd2]:#04b} : Eeserved,\n\r"
-            Template += "\t{Data[EndIdType]:#04b}={Data[EndIdTypeDesc]:s}. \n\r"
+            Template += "\t{Data[EndIdType]:#04b} : {Data[EndIdTypeDesc]:s}. \n\r"
             Template += "{Data[MediumSpecific]:#04x} : Medium-Specific Information\n\r"
 
             DataToDisplay['EndpointID'] = Frame[1]
@@ -457,7 +457,6 @@ def ParseMctpGetVendorDefinedMessageSupportRes(Frame):
             Mctp_Frame_Expected_Length = 5 + Mctp_Vendor_Id_Format.get(Frame[2],{"Length":0}).get("Length")
 
             if Mctp_Frame_Expected_Length == Mctp_Frame_Length:
-                print('Jestem')
                 Template += "{Data[VendorIdSel]:#04x} : {Data[VendorIdSelDesc]:s} : Vendor ID Set Selector\n\r"
                 Template += "{Data[VendorIdFormat]:#04x} : {Data[VendorIdFormatDesc]:s} : Vendor Id Format\n\r"
                 Template += "{Data[VendorId]} : Vendor ID \n\r"
