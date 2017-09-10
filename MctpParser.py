@@ -910,13 +910,12 @@ def ParseMctpControlFrame(Frame):
         Result = Template + "Error!!! Invalid data length\n\r"
 
     #Output parsed MCTP Control frame
-    print(Result)
     return Result
 
 def ParseMctpVendorDefinedPcieFrame(Packet_Data):
-    print("VDM Frame")
+    Result = "VDM Frame"
     ...
-    return
+    return Result
 
 #<TODO> Use dictornary!!!
 def ParseMctpPacketPayload(Packet_Data):
@@ -924,12 +923,12 @@ def ParseMctpPacketPayload(Packet_Data):
 
     #<TODO:> Replace magic numbers with const!!!
     if 0x00 == Msg_Type:
-        ParseMctpControlFrame(Packet_Data)
+        Result = ParseMctpControlFrame(Packet_Data)
     elif 0x7e == Msg_Type:
-        ParseMctpVendorDefinedPcieFrame(Packet_Data)
+        Result = ParseMctpVendorDefinedPcieFrame(Packet_Data)
     else:
-        print("Parser unsupported message type")
-    return
+        Result = "Parser unsupported message type"
+    return Result
 
 
 def ParseMctpTransportHeader(Header):
@@ -965,23 +964,19 @@ def ParseMctpTransportHeader(Header):
     else:
         Result =Template + "Error Invalid length"
        
-    print(Result)  
     return Result
 
 
 def ParseMctpFrame(Frame):
     if len(Frame) >= 5:
-        ParseMctpTransportHeader(Frame[:4])
-        ParseMctpPacketPayload(Frame[4:])
+        Result = ParseMctpTransportHeader(Frame[:4])
+        Result += ParseMctpPacketPayload(Frame[4:])
     else:
-        print("Invalid MCTP Frame length")
-    return
+        Result = "Invalid MCTP Frame length"
+    return Result
 
 #----Script Start----
 if __name__ == "__main__":
-
-# 0x70 0x00 0x10 0x01 0x17 0x00 0x10 0x7F 0x00 0x00 0x1A 0xB4 0x01 0x00 0x00 0xFB 0x00 0x82 0x0D     req0D discovery notify
-# 0x70 0x00 0x10 0x01 0x17 0x00 0x10 0x7F 0x00 0x00 0x1A 0xB4 0x01 0x00 0x00 0xD9 0x00 0x87 0x02     req02 Get Endpoint EID
 
 #--------------------------------------------------Start 0x01------------------------------------------------------------------------------------------------------
     Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x87, 0x01, 0x00, 0x60]    #Set EID Req
@@ -1223,5 +1218,6 @@ if __name__ == "__main__":
     ParseMctpFrame(Mctp_Test_Frame)
 
     Mctp_Test_Frame = [0x01, 0x00, 0x00, 0xD9, 0x00, 0x07, 0x06, 0x00, 0xff, 0x00, 0x80, 0x86, 0x00]    #Response, successfull ,invalid, too short
-    ParseMctpFrame(Mctp_Test_Frame)
+    ParsedFrame = ParseMctpFrame(Mctp_Test_Frame)
+    print(ParsedFrame)
 #--------------------------------------------------End 0x07------------------------------------------------------------------------------------------------------
