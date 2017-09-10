@@ -89,7 +89,6 @@ def ParseMctpPcieHeader(Header):
     DataToDisplay['VendorId']= GetMctpPcieVendorId(Header[10:12])
     
     Result = Template.format(Data = DataToDisplay)
-    print(Result)
     return Result
 
 
@@ -98,7 +97,7 @@ def ParseMctpPcieFrame(PcieFrame):
 
     if len(PcieFrame) > PCIE_VDM_HEADER_LEN:
         #parse PCIe VDM Header
-        ParseMctpPcieHeader(PcieFrame[:12])
+        Result = ParseMctpPcieHeader(PcieFrame[:12])
         
         #Length of the PCIe VDM Data in bytes
         Length = (((PcieFrame[2] & 0x3) << 8) + PcieFrame[3]) * 4
@@ -112,19 +111,19 @@ def ParseMctpPcieFrame(PcieFrame):
                 MctpFrame = PcieFrame[12:]
                 
             #parse MCTP Frame
-            MctpParser.ParseMctpFrame(MctpFrame)
+            Result += MctpParser.ParseMctpFrame(MctpFrame)
 
             #Add 00h Padding
             if PadLen != 0:
-                print("{Data} : PCIe Medium-Specific Trailer (00h Padding)\n\r".format(Data = ["{Data:#04x}".format(Data = item) for item in PcieFrame[-PadLen:]]))
+                Result +="{Data} : PCIe Medium-Specific Trailer (00h Padding)\n\r".format(Data = ["{Data:#04x}".format(Data = item) for item in PcieFrame[-PadLen:]])
              
         else:
-            print("Error: Invalid MCTP PCIe VDM Data length.")
-            print("PCIe VDM Header declares {0} bytes, but frame has {1} bytes.\n\r".format(Length,len(PcieFrame[16:])))
+            Result += "Error: Invalid MCTP PCIe VDM Data length."
+            Result += "PCIe VDM Header declares {0} bytes, but frame has {1} bytes.\n\r".format(Length,len(PcieFrame[16:]))
    
     else:
-        print("Error: Invalid MCTP PCIe VDM Frame length")
-    return
+        Result = "Error: Invalid MCTP PCIe VDM Frame length"
+    return Result
 
 
 #----Script Start----
@@ -162,4 +161,5 @@ if __name__ == "__main__":
     #ParseMctpPcieFrame(Mctp_Pcie_Test_Frame)
 #---UT---
     Mctp_Pcie_Test_Frame = [0x72, 0x00, 0x10, 0x02, 0x18, 0x00, 0x10, 0x7f, 0x00, 0x92, 0x1a, 0xb4, 0x01, 0x50, 0x00, 0xe3, 0x00, 0x0e, 0x01, 0x00, 0x00, 0x60, 0x00, 0x00]
-    ParseMctpPcieFrame(Mctp_Pcie_Test_Frame)
+    ParsedPcieFrame = ParseMctpPcieFrame(Mctp_Pcie_Test_Frame)
+    print(ParsedPcieFrame)
