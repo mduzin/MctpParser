@@ -11,8 +11,10 @@ import MctpPcieParser
 def MctpLineParse(RawData):
    if RawData:
       MctpPcieFrame = [int('0x'+item, 16) for item in RawData.split()]
-      MctpPcieParser.ParseMctpPcieFrame(MctpPcieFrame)
-   return
+      Result = MctpPcieParser.ParseMctpPcieFrame(MctpPcieFrame)
+   else:
+      Result = "Error!!!: No Data"
+   return Result
 
 #----Script Start----
 if __name__ == "__main__":
@@ -22,8 +24,10 @@ if __name__ == "__main__":
    except:
       print("Error!!!: No input file.")
    else:
-      #read and parse log line 
+      #read and parse log line
+      fh = open("ParsedLog.txt","w")
       for line in open(LogFileName):
-         print("Parsed Frame: " + line.upper())
-         MctpLineParse(line)
+         print("Parsed Frame: " + line.upper(),file = fh)
+         print(MctpLineParse(line),file = fh)
+      fh.close()
    
