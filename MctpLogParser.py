@@ -15,8 +15,13 @@ def MctpLineParse(RawData):
    return
 
 #----Script Start----
-LogFileName = sys.argv[1]
+if __name__ == "__main__":
+   LogFileName = "MctpLog.txt"
+else:
+   #input file from cmd line
+   LogFileName = sys.argv[1]
+
 for line in open(LogFileName):
-   print(line)
+   print("Parsed Frame: " + line.upper())
    MctpLineParse(line)
    
