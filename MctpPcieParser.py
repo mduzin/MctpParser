@@ -60,7 +60,7 @@ def GetMctpPcieVdmRoutingType(RoutingType):
         0b011 : 'Broadcast from Root Complex'}
     return '{Type:#05b} : {Desc}'.format(Type = RoutingType, Desc = Mctp_Routing_Type.get(RoutingType,'Not supported for MCTP'))
 
-def ParseMctpPcieHeader(Header):
+def ParsePcieVdmHeader(Header):
     Template = "PCIe Medium-Specific Header: \n\r"
     DataToDisplay = {}
 
@@ -91,36 +91,41 @@ def ParseMctpPcieHeader(Header):
     Result = Template.format(Data = DataToDisplay)
     return Result
 
+def ParsePcieVdmData(PcieData,Length,PadLen):
+    #check PCIe VDM Data Length. PCIe VDM Data starts from 16th byte
+    if len(PcieData[4:]) == Length:
+        if PadLen != 0:
+            MctpFrame = PcieData[:-PadLen]
+        else:
+            MctpFrame = PcieData[:]
+                
+        #parse MCTP Frame        
+        Result = MctpParser.ParseMctpFrame(MctpFrame)
+
+        #Add 00h Padding
+        if PadLen != 0:
+            Result +="{Data} : PCIe Medium-Specific Trailer (00h Padding)\n\r".format(Data = ["{Data:#04x}".format(Data = item) for item in PcieData[-PadLen:]])
+             
+    else:
+        Result = "Error: Invalid MCTP PCIe VDM Data length."
+        Result += "PCIe VDM Header declares {0} bytes, but frame has {1} bytes.\n\r".format(Length,len(PcieData[4:]))
+
+    return Result
 
 def ParseMctpPcieFrame(PcieFrame):
-    #check basic frame size
 
+    #check basic frame size
     if len(PcieFrame) > PCIE_VDM_HEADER_LEN:
         #parse PCIe VDM Header
-        Result = ParseMctpPcieHeader(PcieFrame[:12])
+        Result  = ParsePcieVdmHeader(PcieFrame[:12])
         
-        #Length of the PCIe VDM Data in bytes
+        #extract Length and PadLen values from header
         Length = (((PcieFrame[2] & 0x3) << 8) + PcieFrame[3]) * 4
         PadLen = (PcieFrame[6] & 0x30)>>4
         
-        #check PCIe VDM Data Length. PCIe VDM Data starts from 16th byte
-        if len(PcieFrame[16:]) == Length:
-            if PadLen != 0:
-                MctpFrame = PcieFrame[12:-PadLen]
-            else:
-                MctpFrame = PcieFrame[12:]
-                
-            #parse MCTP Frame
-            Result += MctpParser.ParseMctpFrame(MctpFrame)
-
-            #Add 00h Padding
-            if PadLen != 0:
-                Result +="{Data} : PCIe Medium-Specific Trailer (00h Padding)\n\r".format(Data = ["{Data:#04x}".format(Data = item) for item in PcieFrame[-PadLen:]])
-             
-        else:
-            Result += "Error: Invalid MCTP PCIe VDM Data length."
-            Result += "PCIe VDM Header declares {0} bytes, but frame has {1} bytes.\n\r".format(Length,len(PcieFrame[16:]))
-   
+        #parse PCIe VDM Data
+        Result += ParsePcieVdmData(PcieFrame[12:],Length,PadLen)
+        
     else:
         Result = "Error: Invalid MCTP PCIe VDM Frame length"
     return Result
